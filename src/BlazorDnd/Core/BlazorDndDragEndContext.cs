@@ -1,12 +1,12 @@
 namespace BlazorDnd;
 
 /// <summary>
-/// Passed to <see cref="Draggable{TItem}.OnEnd"/> when a drag operation finishes,
+/// Passed to <see cref="BlazorDndDraggable{TItem}.OnEnd"/> when a drag operation finishes,
 /// mirroring the arguments of React DnD's <c>end(item, monitor)</c> callback.
 /// </summary>
-public sealed class DragEndContext<TItem>
+public sealed class BlazorDndDragEndContext<TItem>
 {
-    public required IDndMonitor Monitor { get; init; }
+    public required BlazorDndIDndMonitor Monitor { get; init; }
 
     /// <summary>The item that was being dragged.</summary>
     public TItem? Item { get; init; }

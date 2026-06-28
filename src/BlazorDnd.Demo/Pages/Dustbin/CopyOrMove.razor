@@ -11,8 +11,8 @@
         <code>OnEnd</code> callback and <code>monitor.DidDrop()</code>).
     </p>
 
-    <DndProvider>
-        <DropTarget TItem="DragBox" Accept="@ItemTypes.Box" Context="t"
+    <BlazorDndDndProvider>
+        <BlazorDndDropTarget TItem="DragBox" Accept="@ItemTypes.Box" Context="t"
                     style="display:contents" OnDrop="HandleDrop">
             <div class="dustbin" style="@($"background-color:{(t.IsOver ? "darkgreen" : "#333")};width:14rem;height:11rem;")">
                 <div>
@@ -23,20 +23,20 @@
                     }
                 </div>
             </div>
-        </DropTarget>
+        </BlazorDndDropTarget>
 
         <div class="row-wrap" style="margin-top:1.5rem;">
             @foreach (var box in _boxes)
             {
-                <Draggable TItem="DragBox" Type="@ItemTypes.Box" Item="box" Context="d"
+                <BlazorDndDraggable TItem="DragBox" Type="@ItemTypes.Box" Item="box" Context="d"
                            OnEnd="@(e => HandleEnd(box, e))">
                     <div class="box" style="opacity:@(d.IsDragging ? "0.4" : "1")">
                         @box.Name <small>(@box.Effect.ToString().ToLower())</small>
                     </div>
-                </Draggable>
+                </BlazorDndDraggable>
             }
         </div>
-    </DndProvider>
+    </BlazorDndDndProvider>
 </div>
 
 @code {
@@ -56,12 +56,12 @@
 
     private readonly List<string> _dropped = new();
 
-    private void HandleDrop(DropEventArgs<DragBox> e)
+    private void HandleDrop(BlazorDndDropEventArgs<DragBox> e)
     {
         if (e.Item is not null) _dropped.Add(e.Item.Name);
     }
 
-    private void HandleEnd(DragBox box, DragEndContext<DragBox> e)
+    private void HandleEnd(DragBox box, BlazorDndDragEndContext<DragBox> e)
     {
         if (e.DidDrop && box.Effect == DropEffect.Move)
             _boxes.Remove(box);

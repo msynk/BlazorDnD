@@ -9,13 +9,13 @@ namespace BlazorDnd;
 /// Wires its host element into the DnD system as a drag source.
 /// This is the component equivalent of React DnD's <c>useDrag</c> hook: you declare a
 /// <see cref="Type"/> and an <see cref="Item"/> (the data), and the child content receives
-/// a <see cref="DragState"/> with the collected props (e.g. <c>IsDragging</c>).
+/// a <see cref="BlazorDndDragState"/> with the collected props (e.g. <c>IsDragging</c>).
 /// </summary>
 /// <typeparam name="TItem">The type of the dragged item payload.</typeparam>
-public sealed class Draggable<TItem> : ComponentBase, IAsyncDisposable
+public sealed class BlazorDndDraggable<TItem> : ComponentBase, IAsyncDisposable
 {
-    [CascadingParameter] private DragDropManager Manager { get; set; } = default!;
-    [Inject] private DndInterop Interop { get; set; } = default!;
+    [CascadingParameter] private BlazorDndDragDropManager Manager { get; set; } = default!;
+    [Inject] private BlazorDndDndInterop Interop { get; set; } = default!;
 
     /// <summary>Required. The item type used to match against drop-target <c>Accept</c> lists.</summary>
     [Parameter, EditorRequired] public string Type { get; set; } = default!;
@@ -33,12 +33,12 @@ public sealed class Draggable<TItem> : ComponentBase, IAsyncDisposable
     [Parameter] public Func<bool>? CanDragPredicate { get; set; }
 
     /// <summary>Custom <c>isDragging</c> implementation (e.g. id-based for re-parented items).</summary>
-    [Parameter] public Func<IDndMonitor, bool>? IsDraggingOverride { get; set; }
+    [Parameter] public Func<BlazorDndIDndMonitor, bool>? IsDraggingOverride { get; set; }
 
-    /// <summary>Hide the native drag image (use together with a <see cref="DragLayer{TItem}"/>).</summary>
+    /// <summary>Hide the native drag image (use together with a <see cref="BlazorDndDragLayer{TItem}"/>).</summary>
     [Parameter] public bool UseCustomDragLayer { get; set; }
 
-    /// <summary>Require a <see cref="DragHandle"/> child to initiate the drag.</summary>
+    /// <summary>Require a <see cref="BlazorDndDragHandle"/> child to initiate the drag.</summary>
     [Parameter] public bool UseHandle { get; set; }
 
     /// <summary>The drop effect / cursor hint: <c>move</c> (default) or <c>copy</c>.</summary>
@@ -48,12 +48,12 @@ public sealed class Draggable<TItem> : ComponentBase, IAsyncDisposable
     [Parameter] public EventCallback<TItem?> OnBegin { get; set; }
 
     /// <summary>Fired when the drag ends (drop or cancel).</summary>
-    [Parameter] public EventCallback<DragEndContext<TItem>> OnEnd { get; set; }
+    [Parameter] public EventCallback<BlazorDndDragEndContext<TItem>> OnEnd { get; set; }
 
     /// <summary>Host element tag name. Defaults to <c>div</c>.</summary>
     [Parameter] public string Tag { get; set; } = "div";
 
-    [Parameter] public RenderFragment<DragState>? ChildContent { get; set; }
+    [Parameter] public RenderFragment<BlazorDndDragState>? ChildContent { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
@@ -61,15 +61,15 @@ public sealed class Draggable<TItem> : ComponentBase, IAsyncDisposable
     private readonly string _handlerId;
     private ElementReference _element;
     private bool _handleArmed;
-    private IJSObjectReferenceWrapper? _emptyPreview;
-    private IJSObjectReferenceWrapper? _dragConfig;
+    private BlazorDndIJSObjectReferenceWrapper? _emptyPreview;
+    private BlazorDndIJSObjectReferenceWrapper? _dragConfig;
     private TItem? _draggingItem;
-    private readonly HandleController _handleController;
+    private readonly BlazorDndHandleController _handleController;
 
-    public Draggable()
+    public BlazorDndDraggable()
     {
         _handlerId = Guid.NewGuid().ToString("N");
-        _handleController = new HandleController(this);
+        _handleController = new BlazorDndHandleController(this);
     }
 
     protected override void OnInitialized() => Manager.StateChanged += OnStateChanged;
@@ -87,7 +87,7 @@ public sealed class Draggable<TItem> : ComponentBase, IAsyncDisposable
             ? IsDraggingOverride(monitor)
             : monitor.IsDragging(_handlerId);
 
-        var state = new DragState
+        var state = new BlazorDndDragState
         {
             Monitor = monitor,
             IsDragging = isDragging,
@@ -107,8 +107,8 @@ public sealed class Draggable<TItem> : ComponentBase, IAsyncDisposable
         builder.AddAttribute(6, "ondragend",
             EventCallback.Factory.Create<DragEventArgs>(this, HandleDragEndAsync));
         builder.AddElementReferenceCapture(7, el => _element = el);
-        // expose handle wiring to descendant DragHandle components
-        builder.OpenComponent<CascadingValue<IDragHandleController>>(8);
+        // expose handle wiring to descendant BlazorDndDragHandle components
+        builder.OpenComponent<CascadingValue<BlazorDndIDragHandleController>>(8);
         builder.AddAttribute(9, "Value", _handleController);
         builder.AddAttribute(10, "IsFixed", true);
         builder.AddAttribute(11, "ChildContent", (RenderFragment)(b =>
@@ -124,9 +124,9 @@ public sealed class Draggable<TItem> : ComponentBase, IAsyncDisposable
         if (firstRender)
         {
             if (UseCustomDragLayer)
-                _emptyPreview = new IJSObjectReferenceWrapper(
+                _emptyPreview = new BlazorDndIJSObjectReferenceWrapper(
                     await Interop.UseEmptyDragPreviewAsync(_element));
-            _dragConfig = new IJSObjectReferenceWrapper(
+            _dragConfig = new BlazorDndIJSObjectReferenceWrapper(
                 await Interop.ConfigureDragSourceAsync(_element, DropEffect));
         }
     }
@@ -138,7 +138,7 @@ public sealed class Draggable<TItem> : ComponentBase, IAsyncDisposable
         _draggingItem = ItemFactory is not null ? ItemFactory() : Item;
         if (ItemFactory is not null && _draggingItem is null) return; // cancelled
 
-        var clientOffset = new XYCoord(e.ClientX, e.ClientY);
+        var clientOffset = new BlazorDndXYCoord(e.ClientX, e.ClientY);
 
         // Begin synchronously (provisional source offset = pointer) so drop targets see the
         // item immediately and don't miss the first dragenter, then patch the real source
@@ -149,14 +149,14 @@ public sealed class Draggable<TItem> : ComponentBase, IAsyncDisposable
 
         var rect = await Interop.GetBoundingClientRectAsync(_element);
         if (rect is not null)
-            Manager.SetInitialSourceClientOffset(new XYCoord(rect.Left, rect.Top));
+            Manager.SetInitialSourceClientOffset(new BlazorDndXYCoord(rect.Left, rect.Top));
     }
 
     private void HandleDrag(DragEventArgs e)
     {
         // The final 'drag' event often reports (0,0); ignore it to avoid a jump.
         if (e.ClientX == 0 && e.ClientY == 0) return;
-        Manager.SetClientOffset(new XYCoord(e.ClientX, e.ClientY));
+        Manager.SetClientOffset(new BlazorDndXYCoord(e.ClientX, e.ClientY));
     }
 
     private async Task HandleDragEndAsync(DragEventArgs e)
@@ -166,7 +166,7 @@ public sealed class Draggable<TItem> : ComponentBase, IAsyncDisposable
         {
             if (OnEnd.HasDelegate)
             {
-                await OnEnd.InvokeAsync(new DragEndContext<TItem>
+                await OnEnd.InvokeAsync(new BlazorDndDragEndContext<TItem>
                 {
                     Monitor = Manager.Monitor,
                     Item = _draggingItem,
@@ -191,38 +191,12 @@ public sealed class Draggable<TItem> : ComponentBase, IAsyncDisposable
         if (_dragConfig is not null) await _dragConfig.DisposeAsync();
     }
 
-    private sealed class HandleController : IDragHandleController
+    private sealed class BlazorDndHandleController : BlazorDndIDragHandleController
     {
-        private readonly Draggable<TItem> _owner;
-        public HandleController(Draggable<TItem> owner) => _owner = owner;
+        private readonly BlazorDndDraggable<TItem> _owner;
+        public BlazorDndHandleController(BlazorDndDraggable<TItem> owner) => _owner = owner;
         public bool RequiresHandle => _owner.UseHandle;
         public void Arm() => _owner.ArmHandle();
         public void Disarm() => _owner.DisarmHandle();
-    }
-}
-
-/// <summary>Non-generic seam so <see cref="DragHandle"/> can control any draggable.</summary>
-public interface IDragHandleController
-{
-    bool RequiresHandle { get; }
-    void Arm();
-    void Disarm();
-}
-
-/// <summary>Wraps an IJSObjectReference's disposal in an exception-safe ValueTask.</summary>
-internal sealed class IJSObjectReferenceWrapper : IAsyncDisposable
-{
-    private readonly IJSObjectReference _reference;
-    public IJSObjectReferenceWrapper(IJSObjectReference reference) => _reference = reference;
-
-    public async ValueTask DisposeAsync()
-    {
-        try { await _reference.InvokeVoidAsync("dispose"); }
-        catch (JSDisconnectedException) { }
-        catch (OperationCanceledException) { }
-        finally
-        {
-            try { await _reference.DisposeAsync(); } catch { /* ignore */ }
-        }
     }
 }

@@ -16,11 +16,11 @@
         <span style="margin-left:1rem;color:#777;">@_boxes.Count boxes · @_bins.Count dustbins · @_totalDrops drops</span>
     </div>
 
-    <DndProvider>
+    <BlazorDndDndProvider>
         <div class="row-wrap" style="margin-bottom:1.5rem;">
             @foreach (var bin in _bins)
             {
-                <DropTarget TItem="Box" AcceptTypes="bin.Accepts" Context="t"
+                <BlazorDndDropTarget TItem="Box" AcceptTypes="bin.Accepts" Context="t"
                             style="display:contents"
                             OnDrop="@(e => OnDrop(bin, e))">
                     <div class="dustbin" style="@BinStyle(bin, t)">
@@ -29,19 +29,19 @@
                             <div style="font-size:0.8rem;">@bin.Count dropped</div>
                         </div>
                     </div>
-                </DropTarget>
+                </BlazorDndDropTarget>
             }
         </div>
 
         <div class="row-wrap">
             @foreach (var box in _boxes)
             {
-                <Draggable TItem="Box" Type="@box.Type" Item="box" Context="d" @key="box.Id">
+                <BlazorDndDraggable TItem="Box" Type="@box.Type" Item="box" Context="d" @key="box.Id">
                     <div class="box" style="@BoxStyle(box, d)">@ShortName(box.Type)#@box.Id</div>
-                </Draggable>
+                </BlazorDndDraggable>
             }
         </div>
-    </DndProvider>
+    </BlazorDndDndProvider>
 </div>
 
 @code {
@@ -90,7 +90,7 @@
         for (int i = 0; i < 10; i++) _boxes.Add(NewBox());
     }
 
-    private void OnDrop(Bin bin, DropEventArgs<Box> e)
+    private void OnDrop(Bin bin, BlazorDndDropEventArgs<Box> e)
     {
         bin.Count++;
         _totalDrops++;
@@ -105,7 +105,7 @@
         _ => t,
     };
 
-    private string BinStyle(Bin bin, DropState<Box> t)
+    private string BinStyle(Bin bin, BlazorDndDropState<Box> t)
     {
         if (t.IsOver && t.CanDrop) return "background:#111;";
         var c = $"hsl({bin.Hue},45%,40%)";
@@ -113,7 +113,7 @@
         return $"background:{c};opacity:{(t.Monitor.IsDragging() ? "0.5" : "1")};";
     }
 
-    private string BoxStyle(Box box, DragState d)
+    private string BoxStyle(Box box, BlazorDndDragState d)
     {
         var hue = Array.IndexOf(AllTypes, box.Type) * 90;
         return $"opacity:{(d.IsDragging ? "0.4" : "1")};border-color:hsl({hue},50%,40%);";

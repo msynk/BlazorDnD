@@ -8,13 +8,13 @@ namespace BlazorDnd;
 /// <summary>
 /// Wires its host element into the DnD system as a drop target (React DnD's <c>useDrop</c>).
 /// Besides in-app drags it can also accept native OS drags (files, text, urls, html) by
-/// listing one of the <see cref="NativeTypes"/> in <see cref="Accept"/>/<see cref="AcceptTypes"/>.
+/// listing one of the <see cref="BlazorDndNativeTypes"/> in <see cref="Accept"/>/<see cref="AcceptTypes"/>.
 /// </summary>
 /// <typeparam name="TItem">The expected dragged item type.</typeparam>
-public sealed class DropTarget<TItem> : ComponentBase, IAsyncDisposable
+public sealed class BlazorDndDropTarget<TItem> : ComponentBase, IAsyncDisposable
 {
-    [CascadingParameter] private DragDropManager Manager { get; set; } = default!;
-    [Inject] private DndInterop Interop { get; set; } = default!;
+    [CascadingParameter] private BlazorDndDragDropManager Manager { get; set; } = default!;
+    [Inject] private BlazorDndDndInterop Interop { get; set; } = default!;
 
     /// <summary>A single accepted item type.</summary>
     [Parameter] public string? Accept { get; set; }
@@ -23,21 +23,21 @@ public sealed class DropTarget<TItem> : ComponentBase, IAsyncDisposable
     [Parameter] public IEnumerable<string>? AcceptTypes { get; set; }
 
     /// <summary>Called when a compatible in-app item is dropped. Set <c>args.Result</c> to publish a result.</summary>
-    [Parameter] public EventCallback<DropEventArgs<TItem>> OnDrop { get; set; }
+    [Parameter] public EventCallback<BlazorDndDropEventArgs<TItem>> OnDrop { get; set; }
 
     /// <summary>Called repeatedly while a compatible in-app item is hovered.</summary>
-    [Parameter] public EventCallback<DropEventArgs<TItem>> OnHover { get; set; }
+    [Parameter] public EventCallback<BlazorDndDropEventArgs<TItem>> OnHover { get; set; }
 
     /// <summary>Called when a native OS drag (file/text/url/html) is dropped.</summary>
-    [Parameter] public EventCallback<NativeDropEventArgs> OnNativeDrop { get; set; }
+    [Parameter] public EventCallback<BlazorDndNativeDropEventArgs> OnNativeDrop { get; set; }
 
     /// <summary>Predicate gating whether this target can accept the current in-app item.</summary>
-    [Parameter] public Func<TItem?, IDndMonitor, bool>? CanDropPredicate { get; set; }
+    [Parameter] public Func<TItem?, BlazorDndIDndMonitor, bool>? CanDropPredicate { get; set; }
 
     /// <summary>Host element tag name. Defaults to <c>div</c>.</summary>
     [Parameter] public string Tag { get; set; } = "div";
 
-    [Parameter] public RenderFragment<DropState<TItem>>? ChildContent { get; set; }
+    [Parameter] public RenderFragment<BlazorDndDropState<TItem>>? ChildContent { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
@@ -50,10 +50,10 @@ public sealed class DropTarget<TItem> : ComponentBase, IAsyncDisposable
     // native (OS) drag local state — the manager only tracks in-app drags
     private int _nativeEnterCount;
     private string? _nativeItemType;
-    private DotNetObjectReference<DropTarget<TItem>>? _selfRef;
-    private IJSObjectReferenceWrapper? _nativeReg;
+    private DotNetObjectReference<BlazorDndDropTarget<TItem>>? _selfRef;
+    private BlazorDndIJSObjectReferenceWrapper? _nativeReg;
 
-    public DropTarget()
+    public BlazorDndDropTarget()
     {
         _handlerId = Guid.NewGuid().ToString("N");
     }
@@ -67,11 +67,11 @@ public sealed class DropTarget<TItem> : ComponentBase, IAsyncDisposable
         if (AcceptTypes is not null) list.AddRange(AcceptTypes);
         _accept = list.Distinct().ToArray();
         _nativeAccepts = _accept
-            .Where(NativeTypes.IsNative)
-            .Select(t => (NativeTypes.ToDataTransferType(t), t))
+            .Where(BlazorDndNativeTypes.IsNative)
+            .Select(t => (BlazorDndNativeTypes.ToDataTransferType(t), t))
             .ToArray();
 
-        Manager.RegisterTarget(new DropTargetEntry
+        Manager.RegisterTarget(new BlazorDndDropTargetEntry
         {
             Id = _handlerId,
             Accept = _accept,
@@ -86,7 +86,7 @@ public sealed class DropTarget<TItem> : ComponentBase, IAsyncDisposable
         if (firstRender && _nativeAccepts.Length > 0)
         {
             _selfRef = DotNetObjectReference.Create(this);
-            _nativeReg = new IJSObjectReferenceWrapper(
+            _nativeReg = new BlazorDndIJSObjectReferenceWrapper(
                 await Interop.RegisterNativeDropAsync(_element, _selfRef));
         }
     }
@@ -103,7 +103,7 @@ public sealed class DropTarget<TItem> : ComponentBase, IAsyncDisposable
         var monitor = Manager.Monitor;
         var native = !monitor.IsDragging() && _nativeOver;
 
-        var state = new DropState<TItem>
+        var state = new BlazorDndDropState<TItem>
         {
             Monitor = monitor,
             IsOver = native || monitor.IsOver(_handlerId),
@@ -164,10 +164,10 @@ public sealed class DropTarget<TItem> : ComponentBase, IAsyncDisposable
     {
         if (!Manager.Monitor.IsDragging()) return; // native handled by JS dragover
         if (!Accepts()) return;
-        Manager.SetClientOffset(new XYCoord(e.ClientX, e.ClientY));
+        Manager.SetClientOffset(new BlazorDndXYCoord(e.ClientX, e.ClientY));
         if (OnHover.HasDelegate)
         {
-            await OnHover.InvokeAsync(new DropEventArgs<TItem>
+            await OnHover.InvokeAsync(new BlazorDndDropEventArgs<TItem>
             {
                 Monitor = Manager.Monitor,
                 Item = Cast(Manager.Monitor.GetItem()),
@@ -195,7 +195,7 @@ public sealed class DropTarget<TItem> : ComponentBase, IAsyncDisposable
         if (!Manager.Monitor.IsDragging()) return; // native drop handled by JS
         if (!Accepts() || !Manager.Monitor.CanDrop(_handlerId)) return;
 
-        var args = new DropEventArgs<TItem>
+        var args = new BlazorDndDropEventArgs<TItem>
         {
             Monitor = Manager.Monitor,
             Item = Cast(Manager.Monitor.GetItem()),
@@ -206,7 +206,7 @@ public sealed class DropTarget<TItem> : ComponentBase, IAsyncDisposable
 
     /// <summary>Invoked from JS when a native OS drop occurs on this target.</summary>
     [JSInvokable]
-    public async Task HandleNativeDrop(NativeDropPayload payload)
+    public async Task HandleNativeDrop(BlazorDndNativeDropPayload payload)
     {
         _nativeEnterCount = 0;
         var nativeType = _nativeAccepts
@@ -217,7 +217,7 @@ public sealed class DropTarget<TItem> : ComponentBase, IAsyncDisposable
 
         if (OnNativeDrop.HasDelegate)
         {
-            await OnNativeDrop.InvokeAsync(new NativeDropEventArgs
+            await OnNativeDrop.InvokeAsync(new BlazorDndNativeDropEventArgs
             {
                 ItemType = nativeType,
                 Files = payload.Files,

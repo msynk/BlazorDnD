@@ -3,10 +3,10 @@ namespace BlazorDnd;
 /// <summary>
 /// A read-only view over the drag-and-drop state, mirroring the union of React DnD's
 /// <c>DragSourceMonitor</c>, <c>DropTargetMonitor</c> and <c>DragLayerMonitor</c>.
-/// A single monitor instance is shared through the <see cref="DragDropManager"/> and
+/// A single monitor instance is shared through the <see cref="BlazorDndDragDropManager"/> and
 /// passed into the collecting/lifecycle callbacks of draggables, drop targets and layers.
 /// </summary>
-public interface IDndMonitor
+public interface BlazorDndIDndMonitor
 {
     /// <summary>True if a drag operation is currently in progress.</summary>
     bool IsDragging();
@@ -42,17 +42,17 @@ public interface IDndMonitor
     bool IsOver(string handlerId, bool shallow = false);
 
     /// <summary>The pointer client offset at the time the drag started.</summary>
-    XYCoord? GetInitialClientOffset();
+    BlazorDndXYCoord? GetInitialClientOffset();
 
     /// <summary>The source element's top-left client offset at the time the drag started.</summary>
-    XYCoord? GetInitialSourceClientOffset();
+    BlazorDndXYCoord? GetInitialSourceClientOffset();
 
     /// <summary>The last recorded pointer client offset during the drag.</summary>
-    XYCoord? GetClientOffset();
+    BlazorDndXYCoord? GetClientOffset();
 
     /// <summary>The delta between the current and initial pointer client offsets.</summary>
-    XYCoord? GetDifferenceFromInitialOffset();
+    BlazorDndXYCoord? GetDifferenceFromInitialOffset();
 
     /// <summary>The projected top-left client offset of the source element.</summary>
-    XYCoord? GetSourceClientOffset();
+    BlazorDndXYCoord? GetSourceClientOffset();
 }

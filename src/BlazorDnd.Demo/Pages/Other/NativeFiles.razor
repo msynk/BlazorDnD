@@ -5,20 +5,20 @@
 <div class="example">
     <h1>Other &mdash; Native Files</h1>
     <p class="lead">
-        A drop target can accept OS-level drags by listing a <code>NativeTypes</code> value. Here
-        the target accepts <code>NativeTypes.File</code>; drag files from your file explorer onto
+        A drop target can accept OS-level drags by listing a <code>BlazorDndNativeTypes</code> value. Here
+        the target accepts <code>BlazorDndNativeTypes.File</code>; drag files from your file explorer onto
         it and the <code>OnNativeDrop</code> callback receives the file list.
     </p>
 
-    <DndProvider>
-        <DropTarget TItem="object" Accept="@NativeTypes.File" Context="t"
+    <BlazorDndDndProvider>
+        <BlazorDndDropTarget TItem="object" Accept="@BlazorDndNativeTypes.File" Context="t"
                     style="display:contents" OnNativeDrop="HandleNativeDrop">
             <div class="dustbin"
                  style="@($"width:100%;max-width:34rem;height:8rem;background:{(t.IsOver ? "#1565c0" : "#333")};")">
                 @(t.IsOver ? "Release to drop the files" : "Drag files here from your OS")
             </div>
-        </DropTarget>
-    </DndProvider>
+        </BlazorDndDropTarget>
+    </BlazorDndDndProvider>
 
     @if (_files.Count > 0)
     {
@@ -45,9 +45,9 @@
 </div>
 
 @code {
-    private readonly List<NativeFile> _files = new();
+    private readonly List<BlazorDndNativeFile> _files = new();
 
-    private void HandleNativeDrop(NativeDropEventArgs e)
+    private void HandleNativeDrop(BlazorDndNativeDropEventArgs e)
     {
         _files.Clear();
         _files.AddRange(e.Files);

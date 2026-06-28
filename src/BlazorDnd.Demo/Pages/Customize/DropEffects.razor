@@ -10,30 +10,30 @@
         cursor: the <em>copy</em> box shows a “+” badge, the <em>move</em> box does not.
     </p>
 
-    <DndProvider>
+    <BlazorDndDndProvider>
         <div class="row-wrap">
-            <Draggable TItem="string" Type="@ItemTypes.Box" Item="@("copy")"
+            <BlazorDndDraggable TItem="string" Type="@ItemTypes.Box" Item="@("copy")"
                        DropEffect="copy" Context="d">
                 <div class="box" style="width:11rem;opacity:@(d.IsDragging ? "0.4" : "1")">
                     Copy me (effect = copy)
                 </div>
-            </Draggable>
+            </BlazorDndDraggable>
 
-            <Draggable TItem="string" Type="@ItemTypes.Box" Item="@("move")"
+            <BlazorDndDraggable TItem="string" Type="@ItemTypes.Box" Item="@("move")"
                        DropEffect="move" Context="d">
                 <div class="box" style="width:11rem;opacity:@(d.IsDragging ? "0.4" : "1")">
                     Move me (effect = move)
                 </div>
-            </Draggable>
+            </BlazorDndDraggable>
         </div>
 
-        <DropTarget TItem="string" Accept="@ItemTypes.Box" Context="t"
+        <BlazorDndDropTarget TItem="string" Accept="@ItemTypes.Box" Context="t"
                     style="display:contents" OnDrop="HandleDrop">
             <div class="dustbin" style="@($"margin-top:1.5rem;width:18rem;background:{(t.IsOver ? "darkgreen" : "#333")};")">
                 @(string.IsNullOrEmpty(_last) ? "Drop here" : $"Last drop used: {_last}")
             </div>
-        </DropTarget>
-    </DndProvider>
+        </BlazorDndDropTarget>
+    </BlazorDndDndProvider>
 
     <p style="margin-top:1rem;color:#777;">
         Tip: in most browsers the copy cursor also appears when you hold <kbd>Ctrl</kbd>
@@ -44,5 +44,5 @@
 @code {
     private string? _last;
 
-    private void HandleDrop(DropEventArgs<string> e) => _last = e.Item;
+    private void HandleDrop(BlazorDndDropEventArgs<string> e) => _last = e.Item;
 }

@@ -7,20 +7,20 @@ namespace BlazorDnd;
 /// Thin wrapper around the <c>blazor-dnd.js</c> module. Registered as a scoped
 /// service by <c>AddBlazorDnd()</c> and used by the drag/drop components.
 /// </summary>
-public sealed class DndInterop : IAsyncDisposable
+public sealed class BlazorDndDndInterop : IAsyncDisposable
 {
     private readonly Lazy<Task<IJSObjectReference>> _module;
 
-    public DndInterop(IJSRuntime js)
+    public BlazorDndDndInterop(IJSRuntime js)
     {
         _module = new(() => js.InvokeAsync<IJSObjectReference>(
             "import", "./_content/BlazorDnd/blazor-dnd.js").AsTask());
     }
 
-    public async ValueTask<DomRect?> GetBoundingClientRectAsync(ElementReference element)
+    public async ValueTask<BlazorDndDomRect?> GetBoundingClientRectAsync(ElementReference element)
     {
         var module = await _module.Value;
-        return await module.InvokeAsync<DomRect?>("getBoundingClientRect", element);
+        return await module.InvokeAsync<BlazorDndDomRect?>("getBoundingClientRect", element);
     }
 
     public async ValueTask<IJSObjectReference> UseEmptyDragPreviewAsync(ElementReference element)
@@ -58,13 +58,4 @@ public sealed class DndInterop : IAsyncDisposable
             catch (OperationCanceledException) { }
         }
     }
-}
-
-/// <summary>A DOMRect projected from JS.</summary>
-public sealed class DomRect
-{
-    public double Left { get; set; }
-    public double Top { get; set; }
-    public double Width { get; set; }
-    public double Height { get; set; }
 }

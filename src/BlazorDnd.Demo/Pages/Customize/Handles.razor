@@ -6,36 +6,36 @@
     <h1>Customize &mdash; Handles &amp; Previews</h1>
     <p class="lead">
         With <code>UseHandle="true"</code> a draggable can only be picked up by a nested
-        <code>&lt;DragHandle&gt;</code>. The rest of the element stays interactive. Compare the two
+        <code>&lt;BlazorDndDragHandle&gt;</code>. The rest of the element stays interactive. Compare the two
         boxes below: the first drags from anywhere, the second only from its grip.
     </p>
 
-    <DndProvider>
+    <BlazorDndDndProvider>
         <div class="row-wrap">
-            <Draggable TItem="string" Type="@ItemTypes.Box" Item="@("whole")" Context="d">
+            <BlazorDndDraggable TItem="string" Type="@ItemTypes.Box" Item="@("whole")" Context="d">
                 <div class="box" style="opacity:@(d.IsDragging ? "0.4" : "1");width:13rem;">
                     Drag me from anywhere
                 </div>
-            </Draggable>
+            </BlazorDndDraggable>
 
-            <Draggable TItem="string" Type="@ItemTypes.Box" Item="@("handle")"
+            <BlazorDndDraggable TItem="string" Type="@ItemTypes.Box" Item="@("handle")"
                        UseHandle="true" Context="d">
                 <div class="box" style="opacity:@(d.IsDragging ? "0.4" : "1");width:13rem;display:flex;align-items:center;">
-                    <DragHandle>
+                    <BlazorDndDragHandle>
                         <span class="handle">⠿</span>
-                    </DragHandle>
+                    </BlazorDndDragHandle>
                     <span>Only the grip drags me</span>
                 </div>
-            </Draggable>
+            </BlazorDndDraggable>
         </div>
 
-        <DropTarget TItem="string" Accept="@ItemTypes.Box" Context="t"
+        <BlazorDndDropTarget TItem="string" Accept="@ItemTypes.Box" Context="t"
                     style="display:contents" OnDrop="@(e => _last = e.Item)">
             <div class="dustbin" style="@($"margin-top:1.5rem;width:18rem;background:{(t.IsOver ? "darkgreen" : "#333")};")">
                 @(string.IsNullOrEmpty(_last) ? "Drop a box here" : $"Dropped: {_last}")
             </div>
-        </DropTarget>
-    </DndProvider>
+        </BlazorDndDropTarget>
+    </BlazorDndDndProvider>
 </div>
 
 @code {

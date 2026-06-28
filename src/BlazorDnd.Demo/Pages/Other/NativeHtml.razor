@@ -5,28 +5,28 @@
 <div class="example">
     <h1>Other &mdash; Native HTML, Text &amp; URLs</h1>
     <p class="lead">
-        The target below accepts <code>NativeTypes.Html</code>, <code>NativeTypes.Text</code> and
-        <code>NativeTypes.Url</code>. Select some text on another page (or in the box on the right)
+        The target below accepts <code>BlazorDndNativeTypes.Html</code>, <code>BlazorDndNativeTypes.Text</code> and
+        <code>BlazorDndNativeTypes.Url</code>. Select some text on another page (or in the box on the right)
         and drag it here, or drag a link / image &mdash; the dropped HTML, plain text and any URLs
         are read from the native <code>DataTransfer</code>.
     </p>
 
-    <DndProvider>
+    <BlazorDndDndProvider>
         <div class="row-wrap" style="align-items:flex-start;">
-            <DropTarget TItem="object" Context="t" style="display:contents"
+            <BlazorDndDropTarget TItem="object" Context="t" style="display:contents"
                         AcceptTypes="_accepted" OnNativeDrop="HandleNativeDrop">
                 <div class="dustbin"
                      style="@($"width:24rem;height:10rem;background:{(t.IsOver ? "#6a1b9a" : "#333")};")">
                     @(t.IsOver ? $"Release ({t.ItemType})" : "Drag selected text / a link here")
                 </div>
-            </DropTarget>
+            </BlazorDndDropTarget>
 
             <div style="border:1px dashed #aaa;padding:1rem;max-width:18rem;">
                 <p>Try selecting and dragging <b>this rich text</b> with a
                     <a href="https://react-dnd.github.io/react-dnd" target="_blank">link inside</a>.</p>
             </div>
         </div>
-    </DndProvider>
+    </BlazorDndDndProvider>
 
     @if (_last is not null)
     {
@@ -53,9 +53,9 @@
 
 @code {
     private readonly string[] _accepted =
-        { NativeTypes.Html, NativeTypes.Text, NativeTypes.Url };
+        { BlazorDndNativeTypes.Html, BlazorDndNativeTypes.Text, BlazorDndNativeTypes.Url };
 
-    private NativeDropEventArgs? _last;
+    private BlazorDndNativeDropEventArgs? _last;
 
-    private void HandleNativeDrop(NativeDropEventArgs e) => _last = e;
+    private void HandleNativeDrop(BlazorDndNativeDropEventArgs e) => _last = e;
 }

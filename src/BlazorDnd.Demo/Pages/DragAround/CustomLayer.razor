@@ -6,29 +6,29 @@
     <h1>Drag Around &mdash; Custom Drag Layer</h1>
     <p class="lead">
         The boxes set <code>UseCustomDragLayer="true"</code> to hide the native preview, and a
-        <code>&lt;DragLayer&gt;</code> renders our own preview positioned at
+        <code>&lt;BlazorDndDragLayer&gt;</code> renders our own preview positioned at
         <code>Monitor.GetSourceClientOffset()</code>. This gives full control over how the
         dragged item looks.
     </p>
 
-    <DndProvider>
-        <DropTarget TItem="DragBox" Accept="@ItemTypes.DragAroundBox"
+    <BlazorDndDndProvider>
+        <BlazorDndDropTarget TItem="DragBox" Accept="@ItemTypes.DragAroundBox"
                     style="display:contents" OnDrop="HandleDrop">
             <div class="drag-around-container">
                 @foreach (var box in _boxes)
                 {
-                    <Draggable TItem="DragBox" Type="@ItemTypes.DragAroundBox" Item="box"
+                    <BlazorDndDraggable TItem="DragBox" Type="@ItemTypes.DragAroundBox" Item="box"
                                UseCustomDragLayer="true" Context="d">
                         <div class="drag-around-box"
                              style="@($"left:{box.Left}px;top:{box.Top}px;opacity:{(d.IsDragging ? 0 : 1)};")">
                             @box.Title
                         </div>
-                    </Draggable>
+                    </BlazorDndDraggable>
                 }
             </div>
-        </DropTarget>
+        </BlazorDndDropTarget>
 
-        <DragLayer TItem="DragBox" Context="layer">
+        <BlazorDndDragLayer TItem="DragBox" Context="layer">
             @if (layer.IsDragging && layer.SourceClientOffset is { } pos && layer.Item is { } item)
             {
                 <div class="drag-layer-root">
@@ -38,8 +38,8 @@
                     </div>
                 </div>
             }
-        </DragLayer>
-    </DndProvider>
+        </BlazorDndDragLayer>
+    </BlazorDndDndProvider>
 </div>
 
 @code {
@@ -56,7 +56,7 @@
         new() { Title = "Drag me", Left = 220, Top = 170 },
     };
 
-    private void HandleDrop(DropEventArgs<DragBox> e)
+    private void HandleDrop(BlazorDndDropEventArgs<DragBox> e)
     {
         var delta = e.Monitor.GetDifferenceFromInitialOffset();
         if (e.Item is null || delta is null) return;

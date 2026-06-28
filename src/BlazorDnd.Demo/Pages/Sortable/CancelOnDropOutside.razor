@@ -10,7 +10,7 @@
         <code>OnEnd</code> with <code>Monitor.DidDrop()</code> to detect a drop outside.
     </p>
 
-    <DndProvider>
+    <BlazorDndDndProvider>
         <div style="max-width:24rem;">
             @foreach (var (card, index) in _cards.Select((c, i) => (c, i)))
             {
@@ -18,7 +18,7 @@
                               OnDragBegin="OnBegin" OnDragEnd="OnEnd" @key="card.Id" />
             }
         </div>
-    </DndProvider>
+    </BlazorDndDndProvider>
 
     <p style="margin-top:1rem;color:#777;">Order: @string.Join(", ", _cards.Select(c => c.Text))</p>
 </div>

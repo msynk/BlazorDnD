@@ -1,12 +1,12 @@
 namespace BlazorDnd;
 
 /// <summary>
-/// Passed to <see cref="DropTarget{TItem}.OnDrop"/> and <see cref="DropTarget{TItem}.OnHover"/>,
+/// Passed to <see cref="BlazorDndDropTarget{TItem}.OnDrop"/> and <see cref="BlazorDndDropTarget{TItem}.OnHover"/>,
 /// mirroring React DnD's <c>drop(item, monitor)</c> / <c>hover(item, monitor)</c> callbacks.
 /// </summary>
-public sealed class DropEventArgs<TItem>
+public sealed class BlazorDndDropEventArgs<TItem>
 {
-    public required IDndMonitor Monitor { get; init; }
+    public required BlazorDndIDndMonitor Monitor { get; init; }
 
     /// <summary>The item currently being dragged.</summary>
     public TItem? Item { get; init; }

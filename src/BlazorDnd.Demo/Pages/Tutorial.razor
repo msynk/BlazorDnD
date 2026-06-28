@@ -5,12 +5,12 @@
 <div class="example">
     <h1>Chessboard Tutorial</h1>
     <p class="lead">
-        The canonical React DnD tutorial. The knight (♘) is a <code>Draggable</code>; every
-        square is a <code>DropTarget</code> whose <code>CanDropPredicate</code> only allows legal
+        The canonical React DnD tutorial. The knight (♘) is a <code>BlazorDndDraggable</code>; every
+        square is a <code>BlazorDndDropTarget</code> whose <code>CanDropPredicate</code> only allows legal
         knight moves. Legal targets are highlighted while dragging.
     </p>
 
-    <DndProvider>
+    <BlazorDndDndProvider>
         <div class="chessboard">
             @for (int row = 0; row < 8; row++)
             {
@@ -21,7 +21,7 @@
                     var black = (c + r) % 2 == 1;
                     var hasKnight = _knightCol == c && _knightRow == r;
 
-                    <DropTarget TItem="string" Accept="@ItemTypes.Knight"
+                    <BlazorDndDropTarget TItem="string" Accept="@ItemTypes.Knight"
                                 CanDropPredicate="@((_, __) => CanMoveKnight(c, r))"
                                 OnDrop="@(_ => MoveKnight(c, r))"
                                 Context="t" style="display:contents">
@@ -41,17 +41,17 @@
 
                             @if (hasKnight)
                             {
-                                <Draggable TItem="string" Type="@ItemTypes.Knight"
+                                <BlazorDndDraggable TItem="string" Type="@ItemTypes.Knight"
                                            Item="@("knight")" Context="d">
                                     <div class="knight" style="text-align:center;opacity:@(d.IsDragging ? "0.3" : "1")">♘</div>
-                                </Draggable>
+                                </BlazorDndDraggable>
                             }
                         </div>
-                    </DropTarget>
+                    </BlazorDndDropTarget>
                 }
             }
         </div>
-    </DndProvider>
+    </BlazorDndDndProvider>
 
     <p style="margin-top:1rem;color:#777;">
         Knight at column @_knightCol, row @_knightRow. Drag it to a highlighted square.

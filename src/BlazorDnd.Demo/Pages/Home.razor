@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 
 <PageTitle>BlazorDnd</PageTitle>
 
@@ -14,8 +14,8 @@
     <h2>Core concepts</h2>
     <ul>
         <li><strong>Items &amp; Types</strong> &mdash; you drag <em>data</em> (an item object) of a certain <em>type</em> (a string), not a view.</li>
-        <li><strong>Monitor</strong> (<code>IDndMonitor</code>) &mdash; exposes live drag state: <code>IsDragging</code>, <code>IsOver</code>, <code>CanDrop</code>, offsets, the item, and more.</li>
-        <li><strong>Components</strong> &mdash; <code>&lt;DndProvider&gt;</code>, <code>&lt;Draggable&gt;</code>, <code>&lt;DropTarget&gt;</code>, <code>&lt;DragLayer&gt;</code>, <code>&lt;DragHandle&gt;</code> map to React DnD's hooks.</li>
+        <li><strong>Monitor</strong> (<code>BlazorDndIDndMonitor</code>) &mdash; exposes live drag state: <code>IsDragging</code>, <code>IsOver</code>, <code>CanDrop</code>, offsets, the item, and more.</li>
+        <li><strong>Components</strong> &mdash; <code>&lt;BlazorDndDndProvider&gt;</code>, <code>&lt;BlazorDndDraggable&gt;</code>, <code>&lt;BlazorDndDropTarget&gt;</code>, <code>&lt;BlazorDndDragLayer&gt;</code>, <code>&lt;BlazorDndDragHandle&gt;</code> map to React DnD's hooks.</li>
         <li><strong>Backend</strong> &mdash; built on Blazor's native HTML5 drag events.</li>
     </ul>
 
@@ -23,20 +23,20 @@
     <p>Register the service in <code>Program.cs</code>:</p>
     <pre><code>builder.Services.AddBlazorDnd();</code></pre>
 
-    <p>Then wrap a region in a <code>DndProvider</code> and declare sources and targets:</p>
+    <p>Then wrap a region in a <code>BlazorDndDndProvider</code> and declare sources and targets:</p>
     <pre><code>@_quickStart</code></pre>
 
     <p>Pick an example from the sidebar to see it in action.</p>
 </div>
 
 @code {
-    private const string _quickStart = @"<DndProvider>
-    <Draggable TItem=""string"" Type=""BOX"" Item=""@(""crate"")"" Context=""d"">
+    private const string _quickStart = @"<BlazorDndDndProvider>
+    <BlazorDndDraggable TItem=""string"" Type=""BOX"" Item=""@(""crate"")"" Context=""d"">
         <div class=""box"" style=""opacity:@(d.IsDragging ? 0.4 : 1)"">Drag me</div>
-    </Draggable>
+    </BlazorDndDraggable>
 
-    <DropTarget TItem=""string"" Accept=""BOX"" Context=""t"" OnDrop=""HandleDrop"">
+    <BlazorDndDropTarget TItem=""string"" Accept=""BOX"" Context=""t"" OnDrop=""HandleDrop"">
         <div class=""dustbin"">@(t.IsOver ? ""Release!"" : ""Drop here"")</div>
-    </DropTarget>
-</DndProvider>";
+    </BlazorDndDropTarget>
+</BlazorDndDndProvider>";
 }

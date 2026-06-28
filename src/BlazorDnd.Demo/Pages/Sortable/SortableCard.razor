@@ -1,14 +1,14 @@
-@inject DndInterop Interop
+@inject BlazorDndDndInterop Interop
 
-<Draggable TItem="DragItem" Type="@ItemTypes.Card" Item="_dragItem" Context="d"
+<BlazorDndDraggable TItem="DragItem" Type="@ItemTypes.Card" Item="_dragItem" Context="d"
            OnBegin="HandleBegin" OnEnd="HandleEnd">
-    <DropTarget TItem="DragItem" Accept="@ItemTypes.Card" OnHover="HandleHover"
+    <BlazorDndDropTarget TItem="DragItem" Accept="@ItemTypes.Card" OnHover="HandleHover"
                 OnDrop="HandleDrop" style="display:contents">
         <div class="sortable-card" @ref="_el" style="opacity:@(d.IsDragging ? "0.2" : "1")">
             @Card.Text
         </div>
-    </DropTarget>
-</Draggable>
+    </BlazorDndDropTarget>
+</BlazorDndDraggable>
 
 @code {
     public record CardModel(int Id, string Text);
@@ -36,11 +36,11 @@
 
     private Task HandleBegin(DragItem _) => OnDragBegin.InvokeAsync(Index);
 
-    private Task HandleEnd(DragEndContext<DragItem> e) => OnDragEnd.InvokeAsync(e.DidDrop);
+    private Task HandleEnd(BlazorDndDragEndContext<DragItem> e) => OnDragEnd.InvokeAsync(e.DidDrop);
 
     // Setting a result marks the drop as handled (monitor.DidDrop() == true), so a
     // drop landing on a card is distinguished from a drop outside the list.
-    private void HandleDrop(DropEventArgs<DragItem> e) => e.Result = "reordered";
+    private void HandleDrop(BlazorDndDropEventArgs<DragItem> e) => e.Result = "reordered";
 
     protected override void OnParametersSet()
     {
@@ -51,7 +51,7 @@
         _dragItem.Index = Index;
     }
 
-    private async Task HandleHover(DropEventArgs<DragItem> e)
+    private async Task HandleHover(BlazorDndDropEventArgs<DragItem> e)
     {
         var item = e.Item;
         if (item is null) return;

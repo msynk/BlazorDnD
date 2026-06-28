@@ -11,15 +11,15 @@
         difference.
     </p>
 
-    <DndProvider>
-        <Draggable TItem="string" Type="@ItemTypes.Box" Item="@("payload")" Context="d">
+    <BlazorDndDndProvider>
+        <BlazorDndDraggable TItem="string" Type="@ItemTypes.Box" Item="@("payload")" Context="d">
             <div class="box" style="margin-bottom:1.5rem;opacity:@(d.IsDragging ? "0.4" : "1")">
                 Drag me into the nest
             </div>
-        </Draggable>
+        </BlazorDndDraggable>
 
         @RenderNest(0)
-    </DndProvider>
+    </BlazorDndDndProvider>
 
     <p style="margin-top:1rem;">
         <span style="display:inline-block;width:14px;height:14px;background:#ffeb3b;border:1px solid #999;"></span>
@@ -36,12 +36,12 @@
     {
         // recursive nested DropTargets
         var seq = 0;
-        builder.OpenComponent<DropTarget<string>>(seq++);
+        builder.OpenComponent<BlazorDndDropTarget<string>>(seq++);
         builder.AddAttribute(seq++, "TItem", typeof(string));
         builder.AddAttribute(seq++, "Accept", ItemTypes.Box);
         builder.AddAttribute(seq++, "style", "display:contents");
         builder.AddAttribute(seq++, "ChildContent",
-            (RenderFragment<DropState<string>>)(t => childBuilder =>
+            (RenderFragment<BlazorDndDropState<string>>)(t => childBuilder =>
             {
                 childBuilder.OpenElement(0, "div");
                 childBuilder.AddAttribute(1, "class", "nest-box");
@@ -56,7 +56,7 @@
         builder.CloseComponent();
     };
 
-    private static string NestStyle(int level, DropState<string> t)
+    private static string NestStyle(int level, BlazorDndDropState<string> t)
     {
         // base colour gets darker as we nest
         var shade = 200 - level * 45;

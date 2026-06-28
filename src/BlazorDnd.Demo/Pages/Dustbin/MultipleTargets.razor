@@ -9,11 +9,11 @@
         the dustbins that can receive it. Boxes themselves carry a type.
     </p>
 
-    <DndProvider>
+    <BlazorDndDndProvider>
         <div class="row-wrap">
             @foreach (var bin in _bins)
             {
-                <DropTarget TItem="SourceBox" AcceptTypes="bin.Accepts" Context="t"
+                <BlazorDndDropTarget TItem="SourceBox" AcceptTypes="bin.Accepts" Context="t"
                             style="display:contents"
                             OnDrop="@(e => HandleDrop(bin, e))">
                     <div class="dustbin" style="@BinStyle(bin, t)">
@@ -29,21 +29,21 @@
                             }
                         </div>
                     </div>
-                </DropTarget>
+                </BlazorDndDropTarget>
             }
         </div>
 
         <div class="row-wrap" style="margin-top:1.5rem;">
             @foreach (var box in _boxes)
             {
-                <Draggable TItem="SourceBox" Type="@box.Type" Item="box" Context="d">
+                <BlazorDndDraggable TItem="SourceBox" Type="@box.Type" Item="box" Context="d">
                     <div class="box" style="opacity:@(d.IsDragging ? "0.4" : "1")">
                         @box.Name
                     </div>
-                </Draggable>
+                </BlazorDndDraggable>
             }
         </div>
-    </DndProvider>
+    </BlazorDndDndProvider>
 </div>
 
 @code {
@@ -74,10 +74,10 @@
         new() { Name = "Anything", Accepts = new[] { ItemTypes.Box, ItemTypes.Knight, ItemTypes.Card }, Color = Color.Purple },
     };
 
-    private void HandleDrop(Bin bin, DropEventArgs<SourceBox> e)
+    private void HandleDrop(Bin bin, BlazorDndDropEventArgs<SourceBox> e)
         => bin.LastDropped = e.Item?.Name;
 
-    private string BinStyle(Bin bin, DropState<SourceBox> t)
+    private string BinStyle(Bin bin, BlazorDndDropState<SourceBox> t)
     {
         var baseColor = bin.Color switch
         {

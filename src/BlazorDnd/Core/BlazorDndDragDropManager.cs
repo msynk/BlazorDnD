@@ -1,14 +1,14 @@
 namespace BlazorDnd;
 
 /// <summary>
-/// The central, scoped state container for a <see cref="DndProvider"/> subtree.
+/// The central, scoped state container for a <see cref="BlazorDndDndProvider"/> subtree.
 /// This is the Blazor equivalent of React DnD's internal Redux store plus the
 /// drag-drop manager. It owns the authoritative drag state, exposes it through the
-/// <see cref="IDndMonitor"/> interface, and notifies subscribers when things change.
+/// <see cref="BlazorDndIDndMonitor"/> interface, and notifies subscribers when things change.
 /// </summary>
-public sealed class DragDropManager : IDndMonitor
+public sealed class BlazorDndDragDropManager : BlazorDndIDndMonitor
 {
-    private readonly Dictionary<string, DropTargetEntry> _targets = new();
+    private readonly Dictionary<string, BlazorDndDropTargetEntry> _targets = new();
     private readonly List<string> _overOrder = new();
     private int _idSeed;
 
@@ -19,9 +19,9 @@ public sealed class DragDropManager : IDndMonitor
     private string? _sourceId;
     private object? _dropResult;
     private bool _didDrop;
-    private XYCoord? _initialClientOffset;
-    private XYCoord? _initialSourceClientOffset;
-    private XYCoord? _clientOffset;
+    private BlazorDndXYCoord? _initialClientOffset;
+    private BlazorDndXYCoord? _initialSourceClientOffset;
+    private BlazorDndXYCoord? _clientOffset;
 
     /// <summary>Raised on structural changes (begin/end/enter/leave/drop).</summary>
     public event Action? StateChanged;
@@ -30,13 +30,13 @@ public sealed class DragDropManager : IDndMonitor
     public event Action? OffsetChanged;
 
     /// <summary>The shared monitor instance for this provider subtree.</summary>
-    public IDndMonitor Monitor => this;
+    public BlazorDndIDndMonitor Monitor => this;
 
     public string GenerateHandlerId(string prefix) => $"{prefix}-{++_idSeed}";
 
     // ---- registration ------------------------------------------------------------
 
-    internal void RegisterTarget(DropTargetEntry entry)
+    internal void RegisterTarget(BlazorDndDropTargetEntry entry)
     {
         // Upsert: preserve a live EnterCount across re-renders so an in-flight hover
         // is not lost when the component re-registers with new parameters.
@@ -57,13 +57,13 @@ public sealed class DragDropManager : IDndMonitor
         _overOrder.Remove(id);
     }
 
-    internal DropTargetEntry? GetTarget(string id) =>
+    internal BlazorDndDropTargetEntry? GetTarget(string id) =>
         _targets.TryGetValue(id, out var t) ? t : null;
 
     // ---- lifecycle ---------------------------------------------------------------
 
     internal void BeginDrag(string sourceId, object? item, string itemType,
-        XYCoord initialClientOffset, XYCoord initialSourceClientOffset)
+        BlazorDndXYCoord initialClientOffset, BlazorDndXYCoord initialSourceClientOffset)
     {
         _isDragging = true;
         _sourceId = sourceId;
@@ -78,7 +78,7 @@ public sealed class DragDropManager : IDndMonitor
         NotifyStateChanged();
     }
 
-    internal void SetClientOffset(XYCoord? offset)
+    internal void SetClientOffset(BlazorDndXYCoord? offset)
     {
         if (!_isDragging) return;
         _clientOffset = offset;
@@ -89,7 +89,7 @@ public sealed class DragDropManager : IDndMonitor
     /// Patches the source element's initial offset shortly after the drag begins (the
     /// bounding rect is fetched asynchronously). Keeps custom drag layers aligned.
     /// </summary>
-    internal void SetInitialSourceClientOffset(XYCoord offset)
+    internal void SetInitialSourceClientOffset(BlazorDndXYCoord offset)
     {
         if (!_isDragging) return;
         _initialSourceClientOffset = offset;
@@ -154,7 +154,7 @@ public sealed class DragDropManager : IDndMonitor
 
     private void NotifyStateChanged() => StateChanged?.Invoke();
 
-    // ---- IDndMonitor -------------------------------------------------------------
+    // ---- BlazorDndIDndMonitor -------------------------------------------------------------
 
     public bool IsDragging() => _isDragging;
 
@@ -195,31 +195,22 @@ public sealed class DragDropManager : IDndMonitor
         return _overOrder.Count > 0 && _overOrder[^1] == handlerId;
     }
 
-    public XYCoord? GetInitialClientOffset() => _initialClientOffset;
+    public BlazorDndXYCoord? GetInitialClientOffset() => _initialClientOffset;
 
-    public XYCoord? GetInitialSourceClientOffset() => _initialSourceClientOffset;
+    public BlazorDndXYCoord? GetInitialSourceClientOffset() => _initialSourceClientOffset;
 
-    public XYCoord? GetClientOffset() => _clientOffset;
+    public BlazorDndXYCoord? GetClientOffset() => _clientOffset;
 
-    public XYCoord? GetDifferenceFromInitialOffset()
+    public BlazorDndXYCoord? GetDifferenceFromInitialOffset()
     {
         if (_clientOffset is null || _initialClientOffset is null) return null;
         return _clientOffset.Value - _initialClientOffset.Value;
     }
 
-    public XYCoord? GetSourceClientOffset()
+    public BlazorDndXYCoord? GetSourceClientOffset()
     {
         var diff = GetDifferenceFromInitialOffset();
         if (diff is null || _initialSourceClientOffset is null) return null;
         return _initialSourceClientOffset.Value + diff.Value;
     }
-}
-
-/// <summary>Internal registration record for a drop target.</summary>
-internal sealed class DropTargetEntry
-{
-    public required string Id { get; init; }
-    public string[] Accept { get; set; } = Array.Empty<string>();
-    public Func<object?, IDndMonitor, bool>? CanDrop { get; set; }
-    public int EnterCount { get; set; }
 }

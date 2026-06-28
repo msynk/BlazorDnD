@@ -4,8 +4,8 @@
 
 @*
     Renders a custom drag preview that follows the pointer, equivalent to React DnD's
-    useDragLayer. Pair with Draggable UseCustomDragLayer="true" to hide the native preview.
-    The child content receives a DragLayerState<TItem> with the live offsets.
+    useDragLayer. Pair with BlazorDndDraggable UseCustomDragLayer="true" to hide the native preview.
+    The child content receives a BlazorDndDragLayerState<TItem> with the live offsets.
 *@
 
 @if (ChildContent is not null)
@@ -14,9 +14,9 @@
 }
 
 @code {
-    [CascadingParameter] private DragDropManager Manager { get; set; } = default!;
+    [CascadingParameter] private BlazorDndDragDropManager Manager { get; set; } = default!;
 
-    [Parameter] public RenderFragment<DragLayerState<TItem>>? ChildContent { get; set; }
+    [Parameter] public RenderFragment<BlazorDndDragLayerState<TItem>>? ChildContent { get; set; }
 
     protected override void OnInitialized()
     {
@@ -26,10 +26,10 @@
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
 
-    private DragLayerState<TItem> BuildState()
+    private BlazorDndDragLayerState<TItem> BuildState()
     {
         var m = Manager.Monitor;
-        return new DragLayerState<TItem>
+        return new BlazorDndDragLayerState<TItem>
         {
             Monitor = m,
             IsDragging = m.IsDragging(),

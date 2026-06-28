@@ -5,19 +5,19 @@
 <div class="example">
     <h1>Sortable &mdash; Simple</h1>
     <p class="lead">
-        Each card is <em>both</em> a <code>Draggable</code> and a <code>DropTarget</code>. While
+        Each card is <em>both</em> a <code>BlazorDndDraggable</code> and a <code>BlazorDndDropTarget</code>. While
         dragging, the <code>OnHover</code> handler compares the pointer against each card's
         midpoint and reorders the list live. Reordering happens during hover, not on drop.
     </p>
 
-    <DndProvider>
+    <BlazorDndDndProvider>
         <div style="max-width:24rem;">
             @foreach (var (card, index) in _cards.Select((c, i) => (c, i)))
             {
                 <SortableCard Card="card" Index="index" OnMove="Move" @key="card.Id" />
             }
         </div>
-    </DndProvider>
+    </BlazorDndDndProvider>
 
     <p style="margin-top:1rem;color:#777;">Order: @string.Join(", ", _cards.Select(c => c.Text))</p>
 </div>

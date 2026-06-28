@@ -1,7 +1,7 @@
 @namespace BlazorDnd
 
 @*
-    Designates a sub-region of a Draggable (configured with UseHandle="true") as the
+    Designates a sub-region of a BlazorDndDraggable (configured with UseHandle="true") as the
     grab handle. Only pointer-presses that start on this element will initiate a drag.
 *@
 
@@ -14,7 +14,7 @@
 </div>
 
 @code {
-    [CascadingParameter] private IDragHandleController? Controller { get; set; }
+    [CascadingParameter] private BlazorDndIDragHandleController? Controller { get; set; }
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
