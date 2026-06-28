@@ -1,0 +1,53 @@
+@page "/drag-around/naive"
+
+<PageTitle>Drag Around · Naive</PageTitle>
+
+<div class="example">
+    <h1>Drag Around &mdash; Naive</h1>
+    <p class="lead">
+        The whole container is a <code>DropTarget</code>. Each box remembers its position;
+        on drop the new position is computed from
+        <code>Monitor.GetDifferenceFromInitialOffset()</code>. This uses the native HTML5
+        drag preview (note the "ghost" while dragging).
+    </p>
+
+    <DndProvider>
+        <DropTarget TItem="DragBox" Accept="@ItemTypes.DragAroundBox"
+                    style="display:contents" OnDrop="HandleDrop">
+            <div class="drag-around-container">
+                @foreach (var box in _boxes)
+                {
+                    <Draggable TItem="DragBox" Type="@ItemTypes.DragAroundBox" Item="box" Context="d">
+                        <div class="drag-around-box"
+                             style="@($"left:{box.Left}px;top:{box.Top}px;opacity:{(d.IsDragging ? 0 : 1)};")">
+                            @box.Title
+                        </div>
+                    </Draggable>
+                }
+            </div>
+        </DropTarget>
+    </DndProvider>
+</div>
+
+@code {
+    public class DragBox
+    {
+        public required string Title { get; init; }
+        public double Left { get; set; }
+        public double Top { get; set; }
+    }
+
+    private readonly List<DragBox> _boxes = new()
+    {
+        new() { Title = "Drag me around", Left = 40, Top = 40 },
+        new() { Title = "Drag me too", Left = 200, Top = 160 },
+    };
+
+    private void HandleDrop(DropEventArgs<DragBox> e)
+    {
+        var delta = e.Monitor.GetDifferenceFromInitialOffset();
+        if (e.Item is null || delta is null) return;
+        e.Item.Left = Math.Round(e.Item.Left + delta.Value.X);
+        e.Item.Top = Math.Round(e.Item.Top + delta.Value.Y);
+    }
+}

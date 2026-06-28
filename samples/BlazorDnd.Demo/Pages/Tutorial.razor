@@ -1,0 +1,77 @@
+@page "/tutorial"
+
+<PageTitle>Chessboard Tutorial</PageTitle>
+
+<div class="example">
+    <h1>Chessboard Tutorial</h1>
+    <p class="lead">
+        The canonical React DnD tutorial. The knight (♘) is a <code>Draggable</code>; every
+        square is a <code>DropTarget</code> whose <code>CanDropPredicate</code> only allows legal
+        knight moves. Legal targets are highlighted while dragging.
+    </p>
+
+    <DndProvider>
+        <div class="chessboard">
+            @for (int row = 0; row < 8; row++)
+            {
+                @for (int col = 0; col < 8; col++)
+                {
+                    var c = col;
+                    var r = row;
+                    var black = (c + r) % 2 == 1;
+                    var hasKnight = _knightCol == c && _knightRow == r;
+
+                    <DropTarget TItem="string" Accept="@ItemTypes.Knight"
+                                CanDropPredicate="@((_, __) => CanMoveKnight(c, r))"
+                                OnDrop="@(_ => MoveKnight(c, r))"
+                                Context="t" style="display:contents">
+                        <div class="chess-square" style="@($"background:{(black ? "#769656" : "#eeeed2")};")">
+                            @if (t.IsOver && t.CanDrop)
+                            {
+                                <div class="chess-overlay" style="background:yellow;"></div>
+                            }
+                            else if (t.CanDrop)
+                            {
+                                <div class="chess-overlay" style="background:green;"></div>
+                            }
+                            else if (t.IsOver)
+                            {
+                                <div class="chess-overlay" style="background:red;"></div>
+                            }
+
+                            @if (hasKnight)
+                            {
+                                <Draggable TItem="string" Type="@ItemTypes.Knight"
+                                           Item="@("knight")" Context="d">
+                                    <div class="knight" style="text-align:center;opacity:@(d.IsDragging ? "0.3" : "1")">♘</div>
+                                </Draggable>
+                            }
+                        </div>
+                    </DropTarget>
+                }
+            }
+        </div>
+    </DndProvider>
+
+    <p style="margin-top:1rem;color:#777;">
+        Knight at column @_knightCol, row @_knightRow. Drag it to a highlighted square.
+    </p>
+</div>
+
+@code {
+    private int _knightCol = 1;
+    private int _knightRow = 7;
+
+    private bool CanMoveKnight(int toCol, int toRow)
+    {
+        int dx = Math.Abs(toCol - _knightCol);
+        int dy = Math.Abs(toRow - _knightRow);
+        return (dx == 2 && dy == 1) || (dx == 1 && dy == 2);
+    }
+
+    private void MoveKnight(int toCol, int toRow)
+    {
+        _knightCol = toCol;
+        _knightRow = toRow;
+    }
+}

@@ -1,0 +1,51 @@
+@namespace BlazorDnd
+@typeparam TItem
+@implements IDisposable
+
+@*
+    Renders a custom drag preview that follows the pointer, equivalent to React DnD's
+    useDragLayer. Pair with Draggable UseCustomDragLayer="true" to hide the native preview.
+    The child content receives a DragLayerState<TItem> with the live offsets.
+*@
+
+@if (ChildContent is not null)
+{
+    @ChildContent(BuildState())
+}
+
+@code {
+    [CascadingParameter] private DragDropManager Manager { get; set; } = default!;
+
+    [Parameter] public RenderFragment<DragLayerState<TItem>>? ChildContent { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Manager.StateChanged += OnChanged;
+        Manager.OffsetChanged += OnChanged;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private DragLayerState<TItem> BuildState()
+    {
+        var m = Manager.Monitor;
+        return new DragLayerState<TItem>
+        {
+            Monitor = m,
+            IsDragging = m.IsDragging(),
+            ItemType = m.GetItemType(),
+            Item = m.GetItem() is TItem t ? t : default,
+            InitialClientOffset = m.GetInitialClientOffset(),
+            InitialSourceClientOffset = m.GetInitialSourceClientOffset(),
+            ClientOffset = m.GetClientOffset(),
+            DifferenceFromInitialOffset = m.GetDifferenceFromInitialOffset(),
+            SourceClientOffset = m.GetSourceClientOffset(),
+        };
+    }
+
+    public void Dispose()
+    {
+        Manager.StateChanged -= OnChanged;
+        Manager.OffsetChanged -= OnChanged;
+    }
+}

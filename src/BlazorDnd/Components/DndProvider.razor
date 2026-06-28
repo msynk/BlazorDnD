@@ -1,0 +1,23 @@
+@namespace BlazorDnd
+
+@*
+    Root of a drag-and-drop context. Equivalent to React DnD's <DndProvider backend={HTML5Backend}>.
+    Creates a DragDropManager and cascades it to all descendant Draggable / DropTarget / DragLayer
+    components. Nest these providers if you need isolated drag contexts.
+*@
+
+<CascadingValue Value="Manager" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    /// <summary>Optional externally-owned manager. When omitted, one is created for this subtree.</summary>
+    [Parameter] public DragDropManager? Manager { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Manager ??= new DragDropManager();
+    }
+}

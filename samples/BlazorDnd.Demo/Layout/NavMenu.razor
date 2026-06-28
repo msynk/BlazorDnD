@@ -1,0 +1,91 @@
+﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">BlazorDnd</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Overview
+            </NavLink>
+        </div>
+
+        <div class="nav-group-title px-3">Tutorial</div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="tutorial">Chessboard</NavLink>
+        </div>
+
+        <div class="nav-group-title px-3">Dustbin</div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="dustbin/single">Single Target</NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="dustbin/iframe">Within an iframe</NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="dustbin/copy-or-move">Copy or Move</NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="dustbin/multiple">Multiple Targets</NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="dustbin/stress-test">Stress Test</NavLink>
+        </div>
+
+        <div class="nav-group-title px-3">Drag Around</div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="drag-around/naive">Naive</NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="drag-around/custom-layer">Custom Drag Layer</NavLink>
+        </div>
+
+        <div class="nav-group-title px-3">Nesting</div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="nesting/drag-sources">Drag Sources</NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="nesting/drop-targets">Drop Targets</NavLink>
+        </div>
+
+        <div class="nav-group-title px-3">Sortable</div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="sortable/simple">Simple</NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="sortable/cancel-on-drop-outside">Cancel on Drop Outside</NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="sortable/stress-test">Stress Test</NavLink>
+        </div>
+
+        <div class="nav-group-title px-3">Customize</div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="customize/handles">Handles &amp; Previews</NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="customize/drop-effects">Drop Effects</NavLink>
+        </div>
+
+        <div class="nav-group-title px-3">Other Cases</div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="other/native-files">Native Files</NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="other/native-html">Native HTML</NavLink>
+        </div>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu;
+}

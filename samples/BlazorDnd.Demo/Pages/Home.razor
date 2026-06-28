@@ -1,0 +1,42 @@
+﻿@page "/"
+
+<PageTitle>BlazorDnd</PageTitle>
+
+<div class="example">
+    <h1>BlazorDnd</h1>
+    <p class="lead">
+        A native Blazor drag-and-drop library inspired by
+        <a href="https://react-dnd.github.io/react-dnd" target="_blank">React DnD</a>.
+        It brings the same data-driven model &mdash; items, types, monitors and a pluggable
+        HTML5 backend &mdash; to Blazor as idiomatic components.
+    </p>
+
+    <h2>Core concepts</h2>
+    <ul>
+        <li><strong>Items &amp; Types</strong> &mdash; you drag <em>data</em> (an item object) of a certain <em>type</em> (a string), not a view.</li>
+        <li><strong>Monitor</strong> (<code>IDndMonitor</code>) &mdash; exposes live drag state: <code>IsDragging</code>, <code>IsOver</code>, <code>CanDrop</code>, offsets, the item, and more.</li>
+        <li><strong>Components</strong> &mdash; <code>&lt;DndProvider&gt;</code>, <code>&lt;Draggable&gt;</code>, <code>&lt;DropTarget&gt;</code>, <code>&lt;DragLayer&gt;</code>, <code>&lt;DragHandle&gt;</code> map to React DnD's hooks.</li>
+        <li><strong>Backend</strong> &mdash; built on Blazor's native HTML5 drag events.</li>
+    </ul>
+
+    <h2>Quick start</h2>
+    <p>Register the service in <code>Program.cs</code>:</p>
+    <pre><code>builder.Services.AddBlazorDnd();</code></pre>
+
+    <p>Then wrap a region in a <code>DndProvider</code> and declare sources and targets:</p>
+    <pre><code>@_quickStart</code></pre>
+
+    <p>Pick an example from the sidebar to see it in action.</p>
+</div>
+
+@code {
+    private const string _quickStart = @"<DndProvider>
+    <Draggable TItem=""string"" Type=""BOX"" Item=""@(""crate"")"" Context=""d"">
+        <div class=""box"" style=""opacity:@(d.IsDragging ? 0.4 : 1)"">Drag me</div>
+    </Draggable>
+
+    <DropTarget TItem=""string"" Accept=""BOX"" Context=""t"" OnDrop=""HandleDrop"">
+        <div class=""dustbin"">@(t.IsOver ? ""Release!"" : ""Drop here"")</div>
+    </DropTarget>
+</DndProvider>";
+}

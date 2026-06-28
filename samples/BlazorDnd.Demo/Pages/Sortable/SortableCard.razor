@@ -1,0 +1,77 @@
+@inject DndInterop Interop
+
+<Draggable TItem="DragItem" Type="@ItemTypes.Card" Item="_dragItem" Context="d"
+           OnBegin="HandleBegin" OnEnd="HandleEnd">
+    <DropTarget TItem="DragItem" Accept="@ItemTypes.Card" OnHover="HandleHover"
+                OnDrop="HandleDrop" style="display:contents">
+        <div class="sortable-card" @ref="_el" style="opacity:@(d.IsDragging ? "0.2" : "1")">
+            @Card.Text
+        </div>
+    </DropTarget>
+</Draggable>
+
+@code {
+    public record CardModel(int Id, string Text);
+
+    public class DragItem
+    {
+        public int Id { get; init; }
+        public int Index { get; set; }
+    }
+
+    [Parameter, EditorRequired] public CardModel Card { get; set; } = default!;
+    [Parameter, EditorRequired] public int Index { get; set; }
+
+    /// <summary>Invoked with (dragIndex, hoverIndex) when a reorder should occur.</summary>
+    [Parameter] public EventCallback<(int From, int To)> OnMove { get; set; }
+
+    /// <summary>Invoked when this card begins dragging (passes its current index).</summary>
+    [Parameter] public EventCallback<int> OnDragBegin { get; set; }
+
+    /// <summary>Invoked when this card stops dragging (passes whether a target handled the drop).</summary>
+    [Parameter] public EventCallback<bool> OnDragEnd { get; set; }
+
+    private ElementReference _el;
+    private DragItem _dragItem = new();
+
+    private Task HandleBegin(DragItem _) => OnDragBegin.InvokeAsync(Index);
+
+    private Task HandleEnd(DragEndContext<DragItem> e) => OnDragEnd.InvokeAsync(e.DidDrop);
+
+    // Setting a result marks the drop as handled (monitor.DidDrop() == true), so a
+    // drop landing on a card is distinguished from a drop outside the list.
+    private void HandleDrop(DropEventArgs<DragItem> e) => e.Result = "reordered";
+
+    protected override void OnParametersSet()
+    {
+        // keep the (stable) drag item in sync with the card's current position
+        _dragItem = _dragItem.Id == Card.Id
+            ? _dragItem
+            : new DragItem { Id = Card.Id };
+        _dragItem.Index = Index;
+    }
+
+    private async Task HandleHover(DropEventArgs<DragItem> e)
+    {
+        var item = e.Item;
+        if (item is null) return;
+
+        int dragIndex = item.Index;
+        int hoverIndex = Index;
+        if (dragIndex == hoverIndex) return;
+
+        var rect = await Interop.GetBoundingClientRectAsync(_el);
+        var clientOffset = e.Monitor.GetClientOffset();
+        if (rect is null || clientOffset is null) return;
+
+        // Only move past the halfway line, to avoid flicker (React DnD's algorithm).
+        double hoverMiddleY = rect.Height / 2;
+        double hoverClientY = clientOffset.Value.Y - rect.Top;
+
+        if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
+        if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
+
+        await OnMove.InvokeAsync((dragIndex, hoverIndex));
+        item.Index = hoverIndex; // mutate the monitored item, like React DnD
+    }
+}

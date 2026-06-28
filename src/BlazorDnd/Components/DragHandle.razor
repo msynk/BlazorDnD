@@ -1,0 +1,32 @@
+@namespace BlazorDnd
+
+@*
+    Designates a sub-region of a Draggable (configured with UseHandle="true") as the
+    grab handle. Only pointer-presses that start on this element will initiate a drag.
+*@
+
+<div @attributes="AdditionalAttributes"
+     style="@StyleWithCursor"
+     @onpointerdown="Arm"
+     @onpointerup="Disarm"
+     @onpointerleave="Disarm">
+    @ChildContent
+</div>
+
+@code {
+    [CascadingParameter] private IDragHandleController? Controller { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Style { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string StyleWithCursor =>
+        $"cursor: move;{(string.IsNullOrEmpty(Style) ? "" : " " + Style)}";
+
+    private void Arm() => Controller?.Arm();
+
+    private void Disarm() => Controller?.Disarm();
+}
