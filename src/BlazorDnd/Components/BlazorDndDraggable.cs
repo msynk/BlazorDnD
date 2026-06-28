@@ -140,13 +140,16 @@ public sealed class BlazorDndDraggable<TItem> : ComponentBase, IAsyncDisposable
 
         var clientOffset = new BlazorDndXYCoord(e.ClientX, e.ClientY);
 
-        // Begin synchronously (provisional source offset = pointer) so drop targets see the
-        // item immediately and don't miss the first dragenter, then patch the real source
-        // offset once the async bounding-rect lookup resolves.
-        Manager.BeginDrag(_handlerId, _draggingItem, Type, clientOffset, clientOffset);
+        // Provisional, synchronous estimate of the source element's top-left so a custom
+        // drag layer renders in roughly the right place on the very first frame.
+        var provisionalSource = new BlazorDndXYCoord(e.ClientX - e.OffsetX, e.ClientY - e.OffsetY);
+
+        Manager.BeginDrag(_handlerId, _draggingItem, Type, clientOffset, provisionalSource);
 
         if (OnBegin.HasDelegate) await OnBegin.InvokeAsync(_draggingItem);
 
+        // Authoritative source offset: measure the host element itself. This is correct
+        // regardless of which (possibly nested) element the drag was started on.
         var rect = await Interop.GetBoundingClientRectAsync(_element);
         if (rect is not null)
             Manager.SetInitialSourceClientOffset(new BlazorDndXYCoord(rect.Left, rect.Top));

@@ -1,4 +1,5 @@
 @page "/drag-around/custom-layer"
+@using System.Globalization
 
 <PageTitle>Drag Around · Custom Drag Layer</PageTitle>
 
@@ -18,11 +19,12 @@
                 @foreach (var box in _boxes)
                 {
                     <BlazorDndDraggable TItem="DragBox" Type="@ItemTypes.DragAroundBox" Item="box"
-                               UseCustomDragLayer="true" Context="d">
-                        <div class="drag-around-box"
-                             style="@($"left:{box.Left}px;top:{box.Top}px;opacity:{(d.IsDragging ? 0 : 1)};")">
-                            @box.Title
-                        </div>
+                               UseCustomDragLayer="true" Context="ds"
+                               class="drag-around-box"
+                               style="@($"left:{Px(box.Left)};top:{Px(box.Top)};opacity:{(box == _draggingBox ? "0.5" : "1")};")"
+                               OnBegin="@(_ => _draggingBox = box)"
+                               OnEnd="@(_ => _draggingBox = null)">
+                        @box.Title
                     </BlazorDndDraggable>
                 }
             </div>
@@ -31,11 +33,8 @@
         <BlazorDndDragLayer TItem="DragBox" Context="layer">
             @if (layer.IsDragging && layer.SourceClientOffset is { } pos && layer.Item is { } item)
             {
-                <div class="drag-layer-root">
-                    <div class="drag-around-box"
-                         style="@($"position:absolute;left:0;top:0;transform:translate({pos.X}px,{pos.Y}px);background:#1565c0;color:white;border-style:solid;")">
-                        @item.Title
-                    </div>
+                <div style="@($"position:fixed;left:{Px(pos.X)};top:{Px(pos.Y)};z-index:1000;pointer-events:none;margin:0;padding:0.5rem 1rem;background:#1565c0;color:white;border:1px solid #1565c0;white-space:nowrap;")">
+                    @item.Title
                 </div>
             }
         </BlazorDndDragLayer>
@@ -56,6 +55,8 @@
         new() { Title = "Drag me", Left = 220, Top = 170 },
     };
 
+    private DragBox? _draggingBox;
+
     private void HandleDrop(BlazorDndDropEventArgs<DragBox> e)
     {
         var delta = e.Monitor.GetDifferenceFromInitialOffset();
@@ -63,4 +64,8 @@
         e.Item.Left = Math.Round(e.Item.Left + delta.Value.X);
         e.Item.Top = Math.Round(e.Item.Top + delta.Value.Y);
     }
+
+    // Format with the invariant culture so the decimal separator is always '.'
+    // (a comma would produce invalid CSS like left:282,5px).
+    private static string Px(double v) => v.ToString("0.###", CultureInfo.InvariantCulture) + "px";
 }

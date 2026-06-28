@@ -1,4 +1,5 @@
 @page "/drag-around/naive"
+@using System.Globalization
 
 <PageTitle>Drag Around · Naive</PageTitle>
 
@@ -17,11 +18,13 @@
             <div class="drag-around-container">
                 @foreach (var box in _boxes)
                 {
-                    <BlazorDndDraggable TItem="DragBox" Type="@ItemTypes.DragAroundBox" Item="box" Context="d">
-                        <div class="drag-around-box"
-                             style="@($"left:{box.Left}px;top:{box.Top}px;opacity:{(d.IsDragging ? 0 : 1)};")">
-                            @box.Title
-                        </div>
+                    <BlazorDndDraggable TItem="DragBox" Type="@ItemTypes.DragAroundBox" Item="box"
+                               Context="ds"
+                               class="drag-around-box"
+                               style="@($"left:{Px(box.Left)};top:{Px(box.Top)};opacity:{(box == _draggingBox ? "0.5" : "1")};")"
+                               OnBegin="@(_ => _draggingBox = box)"
+                               OnEnd="@(_ => _draggingBox = null)">
+                        @box.Title
                     </BlazorDndDraggable>
                 }
             </div>
@@ -43,6 +46,8 @@
         new() { Title = "Drag me too", Left = 200, Top = 160 },
     };
 
+    private DragBox? _draggingBox;
+
     private void HandleDrop(BlazorDndDropEventArgs<DragBox> e)
     {
         var delta = e.Monitor.GetDifferenceFromInitialOffset();
@@ -50,4 +55,8 @@
         e.Item.Left = Math.Round(e.Item.Left + delta.Value.X);
         e.Item.Top = Math.Round(e.Item.Top + delta.Value.Y);
     }
+
+    // Format with the invariant culture so the decimal separator is always '.'
+    // (a comma would produce invalid CSS like left:282,5px).
+    private static string Px(double v) => v.ToString("0.###", CultureInfo.InvariantCulture) + "px";
 }
