@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="BlazorDnd/BlazorDnd.csproj" />
+    <Project Path="BlazorDnd.Demo/BlazorDnd.Demo.csproj" />
+  </Folder>
+</Solution>

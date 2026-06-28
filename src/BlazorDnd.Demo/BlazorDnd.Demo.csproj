@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\BlazorDnd\BlazorDnd.csproj" />
+    <ProjectReference Include="..\BlazorDnd\BlazorDnd.csproj" />
   </ItemGroup>
 
 </Project>
