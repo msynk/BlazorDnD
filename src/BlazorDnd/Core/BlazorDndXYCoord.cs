@@ -1,7 +1,7 @@
 namespace BlazorDnd;
 
 /// <summary>
-/// Represents an { x, y } coordinate pair, mirroring React DnD's <c>BlazorDndXYCoord</c>.
+/// Represents an { x, y } coordinate pair, mirroring React DnD's <c>XYCoord</c>.
 /// Used for the various client/source offsets exposed by the monitor.
 /// </summary>
 public readonly record struct BlazorDndXYCoord(double X, double Y)

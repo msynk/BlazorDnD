@@ -37,7 +37,6 @@
         // recursive nested DropTargets
         var seq = 0;
         builder.OpenComponent<BlazorDndDropTarget<string>>(seq++);
-        builder.AddAttribute(seq++, "TItem", typeof(string));
         builder.AddAttribute(seq++, "Accept", ItemTypes.Box);
         builder.AddAttribute(seq++, "style", "display:contents");
         builder.AddAttribute(seq++, "ChildContent",

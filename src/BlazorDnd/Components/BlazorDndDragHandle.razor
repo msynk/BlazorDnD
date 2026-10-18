@@ -2,14 +2,14 @@
 
 @*
     Designates a sub-region of a BlazorDndDraggable (configured with UseHandle="true") as the
-    grab handle. Only pointer-presses that start on this element will initiate a drag.
+    grab handle. The handle is the native draggable element, so only drags that start on it move
+    the item; the whole draggable is still used as the drag image.
 *@
 
 <div @attributes="AdditionalAttributes"
      style="@StyleWithCursor"
-     @onpointerdown="Arm"
-     @onpointerup="Disarm"
-     @onpointerleave="Disarm">
+     draggable="@(IsActive ? "true" : null)"
+     data-blazor-dnd-handle="">
     @ChildContent
 </div>
 
@@ -23,10 +23,15 @@
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
-    private string StyleWithCursor =>
-        $"cursor: move;{(string.IsNullOrEmpty(Style) ? "" : " " + Style)}";
+    private bool IsActive => Controller is { RequiresHandle: true, CanDrag: true };
 
-    private void Arm() => Controller?.Arm();
-
-    private void Disarm() => Controller?.Disarm();
+    private string? StyleWithCursor
+    {
+        get
+        {
+            var cursor = Controller?.CanDrag == true ? "cursor: move;" : null;
+            if (string.IsNullOrEmpty(Style)) return cursor;
+            return cursor is null ? Style : $"{cursor} {Style}";
+        }
+    }
 }

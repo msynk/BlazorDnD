@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web;
@@ -11,9 +12,10 @@ namespace BlazorDnd;
 /// listing one of the <see cref="BlazorDndNativeTypes"/> in <see cref="Accept"/>/<see cref="AcceptTypes"/>.
 /// </summary>
 /// <typeparam name="TItem">The expected dragged item type.</typeparam>
-public sealed class BlazorDndDropTarget<TItem> : ComponentBase, IAsyncDisposable
+public sealed class BlazorDndDropTarget<TItem> : ComponentBase, IHandleEvent, IAsyncDisposable
 {
-    [CascadingParameter] private BlazorDndDragDropManager Manager { get; set; } = default!;
+    [CascadingParameter] private BlazorDndDragDropManager? Manager { get; set; }
+    [CascadingParameter] private BlazorDndDropTargetScope? ParentScope { get; set; }
     [Inject] private BlazorDndDndInterop Interop { get; set; } = default!;
 
     /// <summary>A single accepted item type.</summary>
@@ -43,196 +45,220 @@ public sealed class BlazorDndDropTarget<TItem> : ComponentBase, IAsyncDisposable
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     private readonly string _handlerId;
+    private BlazorDndDropTargetScope _scope = default!;
     private string[] _accept = Array.Empty<string>();
     private (string Token, string NativeType)[] _nativeAccepts = Array.Empty<(string, string)>();
+    private string[] _nativeTokens = Array.Empty<string>();
     private ElementReference _element;
+    private BlazorDndJSRegistration<BlazorDndDropTargetOptions>? _registration;
+    private DotNetObjectReference<BlazorDndDropTarget<TItem>>? _selfRef;
+    private bool _canDropInApp;
+    private bool _disposed;
 
     // native (OS) drag local state — the manager only tracks in-app drags
-    private int _nativeEnterCount;
     private string? _nativeItemType;
-    private DotNetObjectReference<BlazorDndDropTarget<TItem>>? _selfRef;
-    private BlazorDndIJSObjectReferenceWrapper? _nativeReg;
 
     public BlazorDndDropTarget()
     {
         _handlerId = Guid.NewGuid().ToString("N");
     }
 
-    protected override void OnInitialized() => Manager.StateChanged += OnStateChanged;
+    protected override void OnInitialized()
+    {
+        if (Manager is null)
+            throw new InvalidOperationException(
+                $"{nameof(BlazorDndDropTarget<TItem>)} must be placed inside a {nameof(BlazorDndDndProvider)}.");
+        _scope = new BlazorDndDropTargetScope(Manager, _handlerId, ParentScope);
+        _registration = new(RegisterAsync);
+        Manager.StateChanged += OnStateChanged;
+    }
 
     protected override void OnParametersSet()
     {
         var list = new List<string>();
         if (!string.IsNullOrEmpty(Accept)) list.Add(Accept);
-        if (AcceptTypes is not null) list.AddRange(AcceptTypes);
+        if (AcceptTypes is not null) list.AddRange(AcceptTypes.Where(t => !string.IsNullOrEmpty(t)));
         _accept = list.Distinct().ToArray();
         _nativeAccepts = _accept
             .Where(BlazorDndNativeTypes.IsNative)
             .Select(t => (BlazorDndNativeTypes.ToDataTransferType(t), t))
             .ToArray();
+        var tokens = _nativeAccepts.Select(na => na.Token).ToArray();
+        if (!tokens.SequenceEqual(_nativeTokens)) _nativeTokens = tokens;
 
-        Manager.RegisterTarget(new BlazorDndDropTargetEntry
+        var predicate = CanDropPredicate;
+        Manager!.RegisterTarget(new BlazorDndDropTargetEntry
         {
             Id = _handlerId,
+            ParentId = ParentScope?.FindTargetId(Manager),
             Accept = _accept,
-            CanDrop = CanDropPredicate is null
+            CanDrop = predicate is null
                 ? null
-                : (item, monitor) => CanDropPredicate(Cast(item), monitor),
+                : (item, monitor) => predicate(Cast(item), monitor),
         });
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override Task OnAfterRenderAsync(bool firstRender) =>
+        _registration!.SyncAsync(_element, new BlazorDndDropTargetOptions(_canDropInApp, _nativeTokens));
+
+    private ValueTask<IJSObjectReference?> RegisterAsync(ElementReference element, BlazorDndDropTargetOptions options)
     {
-        if (firstRender && _nativeAccepts.Length > 0)
-        {
-            _selfRef = DotNetObjectReference.Create(this);
-            _nativeReg = new BlazorDndIJSObjectReferenceWrapper(
-                await Interop.RegisterNativeDropAsync(_element, _selfRef));
-        }
+        _selfRef ??= DotNetObjectReference.Create(this);
+        return Interop.RegisterDropTargetAsync(element, _selfRef, options);
     }
 
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
 
+    // Drag events must not trigger the automatic re-render ComponentBase performs after every
+    // event (dragover fires continuously); the manager and the native hover state drive renders.
+    Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem callback, object? arg) => callback.InvokeAsync(arg);
+
     private static TItem? Cast(object? item) => item is TItem t ? t : default;
 
     private bool Accepts() =>
-        Manager.Monitor.GetItemType() is { } type && _accept.Contains(type);
+        Manager!.Monitor.GetItemType() is { } type && _accept.Contains(type);
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
-        var monitor = Manager.Monitor;
-        var native = !monitor.IsDragging() && _nativeOver;
+        var monitor = Manager!.Monitor;
+        var native = !monitor.IsDragging() && _nativeItemType is not null;
+        _canDropInApp = monitor.CanDrop(_handlerId);
 
         var state = new BlazorDndDropState<TItem>
         {
             Monitor = monitor,
             IsOver = native || monitor.IsOver(_handlerId),
             IsOverShallow = native || monitor.IsOver(_handlerId, shallow: true),
-            CanDrop = native || monitor.CanDrop(_handlerId),
+            CanDrop = native || _canDropInApp,
             ItemType = native ? _nativeItemType : monitor.GetItemType(),
             Item = Cast(monitor.GetItem()),
         };
 
+        // Hover tracking, drop-effect feedback (preventDefault/dropEffect) and native drops are
+        // handled by the JS registration; the managed handlers cover in-app hover and drops.
         builder.OpenElement(0, Tag);
-        if (AdditionalAttributes is not null)
-            builder.AddMultipleAttributes(1, AdditionalAttributes);
-        builder.AddAttribute(2, "ondragenter",
-            EventCallback.Factory.Create<DragEventArgs>(this, HandleDragEnter));
-        builder.AddEventPreventDefaultAttribute(3, "ondragenter", true);
-        builder.AddAttribute(4, "ondragover",
-            EventCallback.Factory.Create<DragEventArgs>(this, HandleDragOver));
-        builder.AddEventPreventDefaultAttribute(5, "ondragover", true);
-        builder.AddAttribute(6, "ondragleave",
-            EventCallback.Factory.Create<DragEventArgs>(this, HandleDragLeave));
-        builder.AddAttribute(7, "ondrop",
+        builder.AddMultipleAttributes(1, AdditionalAttributes);
+        if (OnHover.HasDelegate)
+        {
+            builder.AddAttribute(2, "ondragover",
+                EventCallback.Factory.Create<DragEventArgs>(this, HandleDragOverAsync));
+        }
+        builder.AddAttribute(3, "ondrop",
             EventCallback.Factory.Create<DragEventArgs>(this, HandleDropAsync));
-        builder.AddEventPreventDefaultAttribute(8, "ondrop", true);
-        builder.AddElementReferenceCapture(9, el => _element = el);
-        builder.AddContent(10, ChildContent?.Invoke(state));
+        builder.AddElementReferenceCapture(4, el => _element = el);
+        // lets nested drop targets find their parent target (shallow IsOver)
+        builder.OpenComponent<CascadingValue<BlazorDndDropTargetScope>>(5);
+        builder.AddAttribute(6, "Value", _scope);
+        builder.AddAttribute(7, "IsFixed", true);
+        builder.AddAttribute(8, "ChildContent", (RenderFragment)(b =>
+        {
+            b.AddContent(0, ChildContent?.Invoke(state));
+        }));
+        builder.CloseComponent();
         builder.CloseElement();
     }
 
-    private bool _nativeOver => _nativeEnterCount > 0;
-
-    private string? MatchNative(DataTransfer? dt)
+    private string? MatchNative(IReadOnlyCollection<string>? types)
     {
-        if (dt?.Types is null) return null;
+        if (types is null) return null;
         foreach (var (token, nativeType) in _nativeAccepts)
-            if (dt.Types.Contains(token))
+            if (types.Contains(token))
                 return nativeType;
         return null;
     }
 
-    private void HandleDragEnter(DragEventArgs e)
+    // Drags started by a BlazorDnd draggable of any provider (or document) are never native.
+    private static bool IsInAppDrag(IEnumerable<string>? types) =>
+        types?.Any(t => t.StartsWith(BlazorDndDndInterop.SourceTypePrefix, StringComparison.Ordinal)) == true;
+
+    private void SetNativeItemType(string? nativeType)
     {
-        if (Manager.Monitor.IsDragging())
-        {
-            if (Accepts()) Manager.TargetEnter(_handlerId);
-            return;
-        }
-        // external/native drag
-        var matched = MatchNative(e.DataTransfer);
-        if (matched is not null)
-        {
-            _nativeEnterCount++;
-            _nativeItemType = matched;
-            StateHasChanged();
-        }
+        if (_nativeItemType == nativeType) return;
+        _nativeItemType = nativeType;
+        StateHasChanged();
     }
 
-    private async Task HandleDragOver(DragEventArgs e)
+    private async Task HandleDragOverAsync(DragEventArgs e)
     {
-        if (!Manager.Monitor.IsDragging()) return; // native handled by JS dragover
-        if (!Accepts()) return;
-        Manager.SetClientOffset(new BlazorDndXYCoord(e.ClientX, e.ClientY));
-        if (OnHover.HasDelegate)
+        var manager = Manager!;
+        if (!manager.IsDragging() || !Accepts()) return;
+        await manager.FlushBeginAsync();
+        manager.SetClientOffset(new BlazorDndXYCoord(e.ClientX, e.ClientY));
+        await OnHover.InvokeAsync(new BlazorDndDropEventArgs<TItem>
         {
-            await OnHover.InvokeAsync(new BlazorDndDropEventArgs<TItem>
-            {
-                Monitor = Manager.Monitor,
-                Item = Cast(Manager.Monitor.GetItem()),
-            });
-        }
-    }
-
-    private void HandleDragLeave(DragEventArgs e)
-    {
-        if (Manager.Monitor.IsDragging())
-        {
-            if (Accepts()) Manager.TargetLeave(_handlerId);
-            return;
-        }
-        if (_nativeEnterCount > 0) _nativeEnterCount--;
-        if (_nativeEnterCount == 0)
-        {
-            _nativeItemType = null;
-            StateHasChanged();
-        }
+            Monitor = manager.Monitor,
+            Item = Cast(manager.GetItem()),
+        });
     }
 
     private async Task HandleDropAsync(DragEventArgs e)
     {
-        if (!Manager.Monitor.IsDragging()) return; // native drop handled by JS
-        if (!Accepts() || !Manager.Monitor.CanDrop(_handlerId)) return;
+        var manager = Manager!;
+        if (!manager.IsDragging()) return; // native drops are handled in JS
+        await manager.FlushBeginAsync();
+        if (!Accepts() || !manager.CanDrop(_handlerId)) return;
 
+        // the drop event reports the exact final pointer position
+        manager.SetClientOffset(new BlazorDndXYCoord(e.ClientX, e.ClientY));
+        var dragId = manager.DragId;
         var args = new BlazorDndDropEventArgs<TItem>
         {
-            Monitor = Manager.Monitor,
-            Item = Cast(Manager.Monitor.GetItem()),
+            Monitor = manager.Monitor,
+            Item = Cast(manager.GetItem()),
         };
-        if (OnDrop.HasDelegate) await OnDrop.InvokeAsync(args);
-        Manager.RecordDrop(args.Result);
+        var onDrop = OnDrop.InvokeAsync(args);
+        // An async handler may still run when the source's dragend arrives: mark the drop as
+        // handled right away so OnEnd sees DidDrop; the result is recorded once it completes.
+        if (!onDrop.IsCompleted) manager.RecordDrop(dragId, null);
+        await onDrop;
+        manager.RecordDrop(dragId, args.Result);
+    }
+
+    /// <summary>Invoked from JS when the pointer enters or leaves this target during any drag.</summary>
+    [JSInvokable, EditorBrowsable(EditorBrowsableState.Never)]
+    public async Task HandleHoverChanged(bool isOver, string[]? types)
+    {
+        if (_disposed) return;
+        var manager = Manager!;
+        if (manager.IsDragging())
+        {
+            await manager.FlushBeginAsync();
+            SetNativeItemType(null);
+            manager.SetTargetOver(_handlerId, isOver && Accepts());
+            return;
+        }
+        // external/native drag
+        SetNativeItemType(isOver && !IsInAppDrag(types) ? MatchNative(types) : null);
     }
 
     /// <summary>Invoked from JS when a native OS drop occurs on this target.</summary>
-    [JSInvokable]
+    [JSInvokable, EditorBrowsable(EditorBrowsableState.Never)]
     public async Task HandleNativeDrop(BlazorDndNativeDropPayload payload)
     {
-        _nativeEnterCount = 0;
-        var nativeType = _nativeAccepts
-            .Where(na => payload.Types.Contains(na.Token))
-            .Select(na => na.NativeType)
-            .FirstOrDefault();
-        if (nativeType is null) { StateHasChanged(); return; }
+        if (_disposed) return;
+        SetNativeItemType(null);
+        if (Manager!.IsDragging() || IsInAppDrag(payload.Types)) return;
+        var nativeType = MatchNative(payload.Types);
+        if (nativeType is null) return;
 
-        if (OnNativeDrop.HasDelegate)
+        await OnNativeDrop.InvokeAsync(new BlazorDndNativeDropEventArgs
         {
-            await OnNativeDrop.InvokeAsync(new BlazorDndNativeDropEventArgs
-            {
-                ItemType = nativeType,
-                Files = payload.Files,
-                Data = payload.Data,
-            });
-        }
-        _nativeItemType = null;
-        StateHasChanged();
+            ItemType = nativeType,
+            Files = payload.Files ?? Array.Empty<BlazorDndNativeFile>(),
+            Data = payload.Data ?? new Dictionary<string, string>(),
+        });
     }
 
     public async ValueTask DisposeAsync()
     {
-        Manager.StateChanged -= OnStateChanged;
-        Manager.UnregisterTarget(_handlerId);
-        if (_nativeReg is not null) await _nativeReg.DisposeAsync();
+        if (_disposed) return;
+        _disposed = true;
+        if (Manager is not null)
+        {
+            Manager.StateChanged -= OnStateChanged;
+            Manager.UnregisterTarget(_handlerId);
+        }
+        if (_registration is not null) await _registration.DisposeAsync();
         _selfRef?.Dispose();
     }
 }

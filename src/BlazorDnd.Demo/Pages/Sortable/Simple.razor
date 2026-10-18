@@ -11,12 +11,13 @@
     </p>
 
     <BlazorDndDndProvider>
-        <div style="max-width:24rem;">
+        @* the list accepts cards too, so the gaps between cards are not "no-drop" zones *@
+        <BlazorDndDropTarget TItem="SortableCard.DragItem" Accept="@ItemTypes.Card" style="max-width:24rem;">
             @foreach (var (card, index) in _cards.Select((c, i) => (c, i)))
             {
                 <SortableCard Card="card" Index="index" OnMove="Move" @key="card.Id" />
             }
-        </div>
+        </BlazorDndDropTarget>
     </BlazorDndDndProvider>
 
     <p style="margin-top:1rem;color:#777;">Order: @string.Join(", ", _cards.Select(c => c.Text))</p>

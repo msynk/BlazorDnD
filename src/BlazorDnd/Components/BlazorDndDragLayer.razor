@@ -14,12 +14,15 @@
 }
 
 @code {
-    [CascadingParameter] private BlazorDndDragDropManager Manager { get; set; } = default!;
+    [CascadingParameter] private BlazorDndDragDropManager? Manager { get; set; }
 
     [Parameter] public RenderFragment<BlazorDndDragLayerState<TItem>>? ChildContent { get; set; }
 
     protected override void OnInitialized()
     {
+        if (Manager is null)
+            throw new InvalidOperationException(
+                $"{nameof(BlazorDndDragLayer<TItem>)} must be placed inside a {nameof(BlazorDndDndProvider)}.");
         Manager.StateChanged += OnChanged;
         Manager.OffsetChanged += OnChanged;
     }
@@ -28,7 +31,7 @@
 
     private BlazorDndDragLayerState<TItem> BuildState()
     {
-        var m = Manager.Monitor;
+        var m = Manager!.Monitor;
         return new BlazorDndDragLayerState<TItem>
         {
             Monitor = m,
@@ -45,6 +48,7 @@
 
     public void Dispose()
     {
+        if (Manager is null) return;
         Manager.StateChanged -= OnChanged;
         Manager.OffsetChanged -= OnChanged;
     }

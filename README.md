@@ -96,26 +96,28 @@ Wires its host element into the DnD system as a drag source. Child content recei
 | --- | --- | --- |
 | `Type` | `string` | **Required.** Item type used to match drop-target `Accept` lists. |
 | `Item` | `TItem?` | The item payload. Ignored when `ItemFactory` is supplied. |
-| `ItemFactory` | `Func<TItem?>?` | Produces the item lazily at drag start. Return `default` to cancel the drag. |
+| `ItemFactory` | `Func<TItem?>?` | Produces the item lazily at drag start. Return `default` to cancel the drag (in Blazor Server the browser still shows the drag, but no target accepts it). |
 | `CanDrag` | `bool` | Whether dragging is allowed. Defaults to `true`. |
-| `CanDragPredicate` | `Func<bool>?` | Optional predicate overriding `CanDrag`, evaluated at render time. |
+| `CanDragPredicate` | `Func<bool>?` | Optional predicate overriding `CanDrag`, evaluated at render time and again at drag start. |
 | `IsDraggingOverride` | `Func<BlazorDndIDndMonitor, bool>?` | Custom `isDragging` implementation (e.g. id-based for re-parented items). |
 | `UseCustomDragLayer` | `bool` | Hide the native drag image (pair with a `BlazorDndDragLayer`). |
 | `UseHandle` | `bool` | Require a `BlazorDndDragHandle` child to initiate the drag. |
-| `DropEffect` | `string` | Drop effect / cursor hint: `move` (default) or `copy`. |
-| `OnBegin` | `EventCallback<TItem?>` | Fired when the drag begins. |
-| `OnEnd` | `EventCallback<BlazorDndDragEndContext<TItem>>` | Fired when the drag ends (drop or cancel). |
+| `DropEffect` | `string` | The effects the source allows, assigned to `dataTransfer.effectAllowed` (drives the cursor): `move` (default), `copy`, `link`, `copyMove`, `copyLink`, `linkMove` or `all`. |
+| `OnBegin` | `EventCallback<TItem?>` | Fired when the drag begins, before any hover, drop or end callback of that drag. |
+| `OnEnd` | `EventCallback<BlazorDndDragEndContext<TItem>>` | Fired when the drag ends (drop or cancel), even if the draggable was removed during the drag. |
 | `Tag` | `string` | Host element tag name. Defaults to `div`. |
 
 ### `BlazorDndDropTarget<TItem>`
 
-Wires its host element into the DnD system as a drop target. Child content receives a `BlazorDndDropState<TItem>`.
+Wires its host element into the DnD system as a drop target. Child content receives a `BlazorDndDropState<TItem>` (`IsOver`, `IsOverShallow` for the innermost hovered target, `CanDrop`, `ItemType`, `Item`).
+
+While a drag is over a target that cannot accept it (wrong type, or `CanDropPredicate` returns `false`), the browser shows the "no drop" cursor and no drop happens; an enclosing target that can accept the item still receives it. Native drags over a text input, textarea or editable element inside a drop target are left to the browser, so text can still be dropped into them.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `Accept` | `string?` | A single accepted item type. |
 | `AcceptTypes` | `IEnumerable<string>?` | Multiple accepted item types (combined with `Accept`). |
-| `OnDrop` | `EventCallback<BlazorDndDropEventArgs<TItem>>` | Called when a compatible in-app item is dropped. Set `args.Result` to publish a result. |
+| `OnDrop` | `EventCallback<BlazorDndDropEventArgs<TItem>>` | Called when a compatible in-app item is dropped. Set `args.Result` to publish a result. Nested targets are called innermost first; `args.Monitor.DidDrop()` tells whether an inner target already handled the drop. |
 | `OnHover` | `EventCallback<BlazorDndDropEventArgs<TItem>>` | Called repeatedly while a compatible in-app item is hovered. |
 | `OnNativeDrop` | `EventCallback<BlazorDndNativeDropEventArgs>` | Called when a native OS drag is dropped. |
 | `CanDropPredicate` | `Func<TItem?, BlazorDndIDndMonitor, bool>?` | Gates whether this target can accept the current item. |
@@ -126,11 +128,15 @@ Wires its host element into the DnD system as a drop target. Child content recei
 Renders a custom drag preview that follows the pointer (the equivalent of React DnD's `useDragLayer`). Pair with `BlazorDndDraggable UseCustomDragLayer="true"` to hide the native preview. Child content receives a `BlazorDndDragLayerState<TItem>` with the live offsets (`ClientOffset`, `SourceClientOffset`, `DifferenceFromInitialOffset`, etc.).
 
 ```razor
+@using System.Globalization
+
 <BlazorDndDragLayer TItem="CardModel">
     @if (context.IsDragging && context.ClientOffset is { } offset)
     {
+        @* format with the invariant culture: a decimal comma would be invalid CSS *@
         <div style="position: fixed; pointer-events: none;
-                     left: @(offset.X)px; top: @(offset.Y)px;">
+                     left: @(offset.X.ToString(CultureInfo.InvariantCulture))px;
+                     top: @(offset.Y.ToString(CultureInfo.InvariantCulture))px;">
             @context.Item?.Title
         </div>
     }
@@ -139,7 +145,7 @@ Renders a custom drag preview that follows the pointer (the equivalent of React 
 
 ### `BlazorDndDragHandle`
 
-Designates a sub-region of a `BlazorDndDraggable` (configured with `UseHandle="true"`) as the grab handle. Only pointer-presses that start on this element initiate a drag.
+Designates a sub-region of a `BlazorDndDraggable` (configured with `UseHandle="true"`) as the grab handle. The handle is the native draggable element, so only drags that start on it move the item; the whole draggable is still used as the drag image, and the rest of it stays interactive.
 
 ```razor
 <BlazorDndDraggable TItem="CardModel" Type="card" Item="card" UseHandle="true">

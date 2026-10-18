@@ -9,10 +9,10 @@ namespace BlazorDnd;
 public sealed class BlazorDndDragDropManager : BlazorDndIDndMonitor
 {
     private readonly Dictionary<string, BlazorDndDropTargetEntry> _targets = new();
-    private readonly List<string> _overOrder = new();
     private int _idSeed;
 
     // ---- authoritative drag state ------------------------------------------------
+    private long _dragId;
     private bool _isDragging;
     private object? _item;
     private string? _itemType;
@@ -22,8 +22,9 @@ public sealed class BlazorDndDragDropManager : BlazorDndIDndMonitor
     private BlazorDndXYCoord? _initialClientOffset;
     private BlazorDndXYCoord? _initialSourceClientOffset;
     private BlazorDndXYCoord? _clientOffset;
+    private Func<Task>? _pendingBegin;
 
-    /// <summary>Raised on structural changes (begin/end/enter/leave/drop).</summary>
+    /// <summary>Raised on structural changes (begin/end/enter/leave).</summary>
     public event Action? StateChanged;
 
     /// <summary>Raised frequently while dragging as the pointer offset changes.</summary>
@@ -34,11 +35,14 @@ public sealed class BlazorDndDragDropManager : BlazorDndIDndMonitor
 
     public string GenerateHandlerId(string prefix) => $"{prefix}-{++_idSeed}";
 
+    /// <summary>Identifies the current drag; changes with every <see cref="BeginDrag"/>.</summary>
+    internal long DragId => _dragId;
+
     // ---- registration ------------------------------------------------------------
 
     internal void RegisterTarget(BlazorDndDropTargetEntry entry)
     {
-        // Upsert: preserve a live EnterCount across re-renders so an in-flight hover
+        // Upsert: preserve a live IsOver across re-renders so an in-flight hover
         // is not lost when the component re-registers with new parameters.
         if (_targets.TryGetValue(entry.Id, out var existing))
         {
@@ -53,18 +57,23 @@ public sealed class BlazorDndDragDropManager : BlazorDndIDndMonitor
 
     internal void UnregisterTarget(string id)
     {
-        _targets.Remove(id);
-        _overOrder.Remove(id);
+        // a hovered target going away changes the shallow IsOver of its ancestors
+        if (_targets.Remove(id, out var entry) && entry.IsOver && _isDragging)
+            NotifyStateChanged();
     }
-
-    internal BlazorDndDropTargetEntry? GetTarget(string id) =>
-        _targets.TryGetValue(id, out var t) ? t : null;
 
     // ---- lifecycle ---------------------------------------------------------------
 
+    /// <summary>
+    /// Starts a drag without notifying subscribers yet: the drag source publishes it with
+    /// <see cref="FlushBeginAsync"/> once re-rendering can no longer affect the browser's
+    /// drag image. <paramref name="onBegun"/> runs when the drag is published.
+    /// </summary>
     internal void BeginDrag(string sourceId, object? item, string itemType,
-        BlazorDndXYCoord initialClientOffset, BlazorDndXYCoord initialSourceClientOffset)
+        BlazorDndXYCoord initialClientOffset, BlazorDndXYCoord initialSourceClientOffset,
+        Func<Task>? onBegun = null)
     {
+        _dragId++;
         _isDragging = true;
         _sourceId = sourceId;
         _item = item;
@@ -74,82 +83,78 @@ public sealed class BlazorDndDragDropManager : BlazorDndIDndMonitor
         _initialClientOffset = initialClientOffset;
         _initialSourceClientOffset = initialSourceClientOffset;
         _clientOffset = initialClientOffset;
-        _overOrder.Clear();
-        NotifyStateChanged();
+        foreach (var t in _targets.Values) t.IsOver = false;
+        _pendingBegin = onBegun ?? (() => Task.CompletedTask);
     }
 
-    internal void SetClientOffset(BlazorDndXYCoord? offset)
+    /// <summary>
+    /// Publishes the drag started by <see cref="BeginDrag"/> (notifies subscribers and runs its
+    /// begin callback) if that has not happened yet. Every other drag callback calls this first,
+    /// so the source's begin callback always runs before hover, drop and end callbacks.
+    /// </summary>
+    internal Task FlushBeginAsync()
     {
-        if (!_isDragging) return;
+        var onBegun = _pendingBegin;
+        if (onBegun is null) return Task.CompletedTask;
+        _pendingBegin = null;
+        NotifyStateChanged();
+        return onBegun();
+    }
+
+    internal void SetClientOffset(BlazorDndXYCoord offset)
+    {
+        if (!_isDragging || _clientOffset == offset) return;
         _clientOffset = offset;
         OffsetChanged?.Invoke();
     }
 
     /// <summary>
-    /// Patches the source element's initial offset shortly after the drag begins (the
-    /// bounding rect is fetched asynchronously). Keeps custom drag layers aligned.
+    /// Patches the source element's initial offset shortly after the drag begins (when the
+    /// bounding rect has to be fetched asynchronously). Keeps custom drag layers aligned.
     /// </summary>
     internal void SetInitialSourceClientOffset(BlazorDndXYCoord offset)
     {
-        if (!_isDragging) return;
+        if (!_isDragging || _initialSourceClientOffset == offset) return;
         _initialSourceClientOffset = offset;
         OffsetChanged?.Invoke();
     }
 
-    internal void TargetEnter(string id)
+    /// <summary>Marks whether the pointer is over a target that accepts the dragged item.</summary>
+    internal void SetTargetOver(string id, bool isOver)
     {
-        var entry = GetTarget(id);
-        if (entry is null) return;
-        entry.EnterCount++;
-        if (entry.EnterCount == 1)
-        {
-            _overOrder.Remove(id);
-            _overOrder.Add(id);
-            NotifyStateChanged();
-        }
-    }
-
-    internal void TargetLeave(string id)
-    {
-        var entry = GetTarget(id);
-        if (entry is null) return;
-        if (entry.EnterCount > 0) entry.EnterCount--;
-        if (entry.EnterCount == 0)
-        {
-            _overOrder.Remove(id);
-            NotifyStateChanged();
-        }
+        if (!_isDragging || !_targets.TryGetValue(id, out var entry) || entry.IsOver == isOver) return;
+        entry.IsOver = isOver;
+        NotifyStateChanged();
     }
 
     /// <summary>
-    /// Records that a drop occurred. Called by each drop target in the bubbling chain
-    /// (innermost first). A non-null result from a later (outer) target overrides the
-    /// result set by an inner target, matching React DnD semantics.
+    /// Records that a drop occurred during drag <paramref name="dragId"/>. Called by each drop
+    /// target in the bubbling chain (innermost first). A non-null result from a later (outer)
+    /// target overrides the result set by an inner target, matching React DnD semantics.
+    /// Calls for a drag that already ended (e.g. from a slow async handler) are ignored.
     /// </summary>
-    internal void RecordDrop(object? result)
+    internal void RecordDrop(long dragId, object? result)
     {
+        if (!_isDragging || dragId != _dragId) return;
         _didDrop = true;
         if (result is not null) _dropResult = result;
     }
 
     internal void EndDrag()
     {
+        if (!_isDragging) return;
         _isDragging = false;
+        _pendingBegin = null;
         _item = null;
         _itemType = null;
         _sourceId = null;
+        _dropResult = null;
+        _didDrop = false;
         _initialClientOffset = null;
         _initialSourceClientOffset = null;
         _clientOffset = null;
-        foreach (var t in _targets.Values) t.EnterCount = 0;
-        _overOrder.Clear();
+        foreach (var t in _targets.Values) t.IsOver = false;
         NotifyStateChanged();
-    }
-
-    internal void ResetDropState()
-    {
-        _dropResult = null;
-        _didDrop = false;
     }
 
     private void NotifyStateChanged() => StateChanged?.Invoke();
@@ -180,19 +185,31 @@ public sealed class BlazorDndDragDropManager : BlazorDndIDndMonitor
     public bool CanDrop(string handlerId)
     {
         if (!_isDragging) return false;
-        var entry = GetTarget(handlerId);
-        if (entry is null) return false;
+        if (!_targets.TryGetValue(handlerId, out var entry)) return false;
         if (_itemType is null || !entry.Accept.Contains(_itemType)) return false;
         return entry.CanDrop?.Invoke(_item, this) ?? true;
     }
 
     public bool IsOver(string handlerId, bool shallow = false)
     {
-        if (!_isDragging) return false;
-        var entry = GetTarget(handlerId);
-        if (entry is null || entry.EnterCount <= 0) return false;
+        if (!_isDragging || !_targets.TryGetValue(handlerId, out var entry) || !entry.IsOver) return false;
         if (!shallow) return true;
-        return _overOrder.Count > 0 && _overOrder[^1] == handlerId;
+        // shallow: no hovered target is nested inside this one
+        foreach (var other in _targets.Values)
+        {
+            if (other.IsOver && !ReferenceEquals(other, entry) && IsNestedIn(other, handlerId)) return false;
+        }
+        return true;
+    }
+
+    private bool IsNestedIn(BlazorDndDropTargetEntry entry, string ancestorId)
+    {
+        for (var parentId = entry.ParentId; parentId is not null;
+             parentId = _targets.TryGetValue(parentId, out var parent) ? parent.ParentId : null)
+        {
+            if (parentId == ancestorId) return true;
+        }
+        return false;
     }
 
     public BlazorDndXYCoord? GetInitialClientOffset() => _initialClientOffset;

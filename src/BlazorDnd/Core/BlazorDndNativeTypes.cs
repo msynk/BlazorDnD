@@ -2,7 +2,7 @@ namespace BlazorDnd;
 
 /// <summary>
 /// Item types for OS-level (native) drags, mirroring React DnD's HTML5 backend
-/// <c>BlazorDndNativeTypes</c> (<c>FILE</c>, <c>URL</c>, <c>TEXT</c>). A <see cref="BlazorDndDropTarget{TItem}"/>
+/// <c>NativeTypes</c> (<c>FILE</c>, <c>URL</c>, <c>TEXT</c>, <c>HTML</c>). A <see cref="BlazorDndDropTarget{TItem}"/>
 /// that accepts one of these will react to drags originating outside the application
 /// (dragged files, selected text, links, etc.).
 /// </summary>

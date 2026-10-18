@@ -33,13 +33,14 @@
 
     private ElementReference _el;
     private DragItem _dragItem = new();
+    private bool _measuring;
 
     private Task HandleBegin(DragItem _) => OnDragBegin.InvokeAsync(Index);
 
     private Task HandleEnd(BlazorDndDragEndContext<DragItem> e) => OnDragEnd.InvokeAsync(e.DidDrop);
 
-    // Setting a result marks the drop as handled (monitor.DidDrop() == true), so a
-    // drop landing on a card is distinguished from a drop outside the list.
+    // Any drop on a card already counts as handled (monitor.DidDrop() == true); the result is
+    // published for the drag source to inspect through monitor.GetDropResult().
     private void HandleDrop(BlazorDndDropEventArgs<DragItem> e) => e.Result = "reordered";
 
     protected override void OnParametersSet()
@@ -54,15 +55,25 @@
     private async Task HandleHover(BlazorDndDropEventArgs<DragItem> e)
     {
         var item = e.Item;
-        if (item is null) return;
+        if (item is null || item.Index == Index || _measuring) return;
+
+        // Measuring is asynchronous: skip hovers that arrive meanwhile, and re-read the indices
+        // afterwards because other cards may have reordered the list in between.
+        BlazorDndDomRect? rect;
+        _measuring = true;
+        try
+        {
+            rect = await Interop.GetBoundingClientRectAsync(_el);
+        }
+        finally
+        {
+            _measuring = false;
+        }
 
         int dragIndex = item.Index;
         int hoverIndex = Index;
-        if (dragIndex == hoverIndex) return;
-
-        var rect = await Interop.GetBoundingClientRectAsync(_el);
         var clientOffset = e.Monitor.GetClientOffset();
-        if (rect is null || clientOffset is null) return;
+        if (rect is null || clientOffset is null || dragIndex == hoverIndex || !e.Monitor.IsDragging()) return;
 
         // Only move past the halfway line, to avoid flicker (React DnD's algorithm).
         double hoverMiddleY = rect.Height / 2;
