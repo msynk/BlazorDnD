@@ -1,3 +1,5 @@
+**Note**: moved to bitplatform (https://bdnd.bitplatform.dev)
+
 # BlazorDnd
 
 A declarative drag-and-drop library for Blazor, inspired by [React DnD](https://react-dnd.github.io/react-dnd/). Instead of hooks, BlazorDnd gives you composable components (`BlazorDndDraggable`, `BlazorDndDropTarget`, `BlazorDndDragLayer`, `BlazorDndDragHandle`) backed by the HTML5 drag-and-drop API.
